@@ -50,10 +50,15 @@ class ResultMerger:
         validated_articles = self._validate_content(matched_articles, terms_a, terms_b)
         self.logger.info(f"Schritt 2: {len(validated_articles)} Artikel validiert (A AND B in content)")
         
-        # Step 3: Export results
-        if validated_articles:
+        # Step 3: Deduplicate by (authors, title)
+        unique_articles = self._deduplicate(validated_articles)
+        duplicates_removed = len(validated_articles) - len(unique_articles)
+        self.logger.info(f"Schritt 3: {len(unique_articles)} eindeutige Artikel (entfernte Duplikate: {duplicates_removed})")
+        
+        # Step 4: Export results
+        if unique_articles:
             csv_path, json_path = self._export_results(
-                validated_articles, 
+                unique_articles, 
                 output_dir, 
                 database
             )
@@ -107,8 +112,9 @@ class ResultMerger:
         validated = []
         
         for article in articles:
-            title = article.get('title', '').lower()
-            abstract = article.get('abstract', '').lower()
+            # Handle None values properly
+            title = (article.get('title') or '').lower()
+            abstract = (article.get('abstract') or '').lower()
             content = f"{title} {abstract}"
             
             # Check if at least one term from A is in content
@@ -122,6 +128,31 @@ class ResultMerger:
                 validated.append(article)
         
         return validated
+    
+    def _deduplicate(self, articles: List[Dict]) -> List[Dict]:
+        """
+        Entfernt Duplikate basierend auf (authors, title)
+        
+        Args:
+            articles: Liste von Artikeln (kann Duplikate enthalten)
+            
+        Returns:
+            Liste ohne Duplikate (behält ersten Treffer)
+        """
+        seen = set()
+        unique_articles = []
+        
+        for article in articles:
+            # Erstelle eindeutigen Key aus authors + title (normalisiert)
+            title = (article.get('title') or '').lower().strip()
+            authors = (article.get('authors') or '').lower().strip()
+            key = (authors, title)
+            
+            if key not in seen:
+                seen.add(key)
+                unique_articles.append(article)
+        
+        return unique_articles
     
     def _export_results(self,
                        articles: List[Dict],
