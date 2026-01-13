@@ -1,0 +1,305 @@
+================================================================================
+              MEDICAL DATABASE RESEARCH TOOL - WORKFLOW SCHEMA
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        STARTPUNKT                                │
+│                    python src/main.py                            │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     DATEI-EINGABE                                │
+│  Benutzer wählt Query-Datei: pubmed.txt, europepmc.txt,        │
+│  openalex.txt                                                    │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   QUERY HANDLER (src/core/query_handler.py)     │
+│  • Liest Query-Datei                                            │
+│  • Erkennt Datenbank aus Dateiname                              │
+│  • Prüft auf AND-Logik (mehrzeilig mit "AND")                   │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                    ┌────────┴────────┐
+                    │                 │
+              [AND-Logik?]           │
+                    │                 │
+            ┌───────┴───────┐        │
+            │               │        │
+          [JA]            [NEIN]    │
+            │               │        │
+            │               └────────┘
+            │                        │
+            ▼                        ▼
+┌─────────────────────┐   ┌──────────────────────────┐
+│  NUR OPENALEX!      │   │   NORMALE SUCHE          │
+│  Split & Merge      │   │   (PubMed/EuropePMC)     │
+└──────────┬──────────┘   └───────────┬──────────────┘
+           │                          │
+           ▼                          ▼
+┌─────────────────────────────────────────────────────────┐
+│            QUERY SPLITTER (src/core/query_splitter.py)  │
+│  • Splittet Query in Gruppe A & B                       │
+│  • Extrahiert Zeitraum (z.B. "2000-2024")              │
+│  • Extrahiert Suchbegriffe für Validation              │
+└───────────────────┬─────────────────────────────────────┘
+                    │
+        ┌───────────┴───────────┐
+        ▼                       ▼
+┌───────────────┐      ┌───────────────┐
+│  GRUPPE A     │      │  GRUPPE B     │
+│  periodontitis│      │  ubiquinone   │
+└───────┬───────┘      └───────┬───────┘
+        │                      │
+        ▼                      ▼
+┌─────────────────────────────────────────────────────────┐
+│              DATABASE ADAPTER                            │
+│  (src/databases/openalex.py, pubmed.py, europepmc.py)  │
+│                                                          │
+│  ┌────────────────────────────────────────────┐        │
+│  │  OPENALEX                                  │        │
+│  │  • select: nur 7 Felder                    │        │
+│  │  • Cursor-Pagination                       │        │
+│  │  • Alle Ergebnisse                         │        │
+│  └────────────────────────────────────────────┘        │
+│                                                          │
+│  ┌────────────────────────────────────────────┐        │
+│  │  PUBMED                                    │        │
+│  │  • efetch mit XML                          │        │
+│  │  • Pagination (10k IDs/batch)              │        │
+│  │  • Abstract-Extraktion                     │        │
+│  └────────────────────────────────────────────┘        │
+│                                                          │
+│  ┌────────────────────────────────────────────┐        │
+│  │  EUROPEPMC                                 │        │
+│  │  • resultType=core                         │        │
+│  │  • Cursor-Pagination                       │        │
+│  │  • Alle Ergebnisse                         │        │
+│  └────────────────────────────────────────────┘        │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              BASE ADAPTER (src/databases/base_adapter.py)│
+│  • _standardize_article()                               │
+│  • Einheitliches Format: authors, title, year,          │
+│    doi, url, abstract                                    │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+        ┌────────────┴──────────────┐
+        │                           │
+   [AND-Query?]                    │
+        │                           │
+    ┌───┴───┐                      │
+    │       │                      │
+  [JA]    [NEIN]                  │
+    │       │                      │
+    │       └──────────────────────┘
+    │                              │
+    ▼                              ▼
+┌─────────────────┐      ┌────────────────┐
+│  MERGE-PROZESS  │      │  DIREKTEXPORT  │
+│  (Merger)       │      │                │
+└────────┬────────┘      └────────┬───────┘
+         │                        │
+         ▼                        │
+┌──────────────────────────────────────┐  │
+│  MERGER (src/utils/merger.py)       │  │
+│                                      │  │
+│  [1] Match-Finding                  │  │
+│      • Vergleich: title + authors   │  │
+│      • A ∩ B = Matches              │  │
+│                                      │  │
+│  [2] Content-Validation             │  │
+│      • Prüft: Begriffe A UND B      │  │
+│      • In: title + abstract         │  │
+│      • Matches → validiert          │  │
+│                                      │  │
+│  [3] Deduplizierung                 │  │
+│      • Key: (authors, title)        │  │
+│      • Entfernt Duplikate           │  │
+│      • validiert → unique           │  │
+└────────────────┬─────────────────────┘  │
+                 │                        │
+                 └────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────┐
+│              EXPORTER (src/utils/exporter.py)           │
+│                                                          │
+│  ┌────────────────────────────────────────────┐        │
+│  │  CSV-Export                                │        │
+│  │  • Spalten: authors, title, year, doi,     │        │
+│  │    url, abstract                            │        │
+│  │  • UTF-8 encoding                          │        │
+│  └────────────────────────────────────────────┘        │
+│                                                          │
+│  ┌────────────────────────────────────────────┐        │
+│  │  JSON-Export                               │        │
+│  │  • Metadata: database, query, timestamp    │        │
+│  │  • Articles: vollständige Datensätze       │        │
+│  └────────────────────────────────────────────┘        │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                    OUTPUT-DATEIEN                        │
+│                                                          │
+│  output/[database]/                                      │
+│    • [database]_timestamp.csv                           │
+│    • [database]_timestamp.json                          │
+│                                                          │
+│  Bei AND-Query (OpenAlex):                              │
+│    • [term_a]_A_timestamp.csv/json (Zwischenergebnis)  │
+│    • [term_b]_B_timestamp.csv/json (Zwischenergebnis)  │
+│    • openalex_timestamp.csv/json (Finales Merge)       │
+└─────────────────────────────────────────────────────────┘
+
+================================================================================
+                        SCHLÜSSEL-KOMPONENTEN
+================================================================================
+
+1. QUERY HANDLER (src/core/query_handler.py)
+   - Orchestriert den gesamten Workflow
+   - Entscheidet über normale Suche vs. Split & Merge
+   - Initialisiert passenden Database Adapter
+
+2. QUERY SPLITTER (src/core/query_splitter.py)
+   - Nur für OpenAlex AND-Queries
+   - Splittet Query in Gruppe A und B
+   - Extrahiert Zeitraum und Suchbegriffe
+
+3. DATABASE ADAPTERS
+   a) OpenAlex (src/databases/openalex.py)
+      - select-Parameter: nur 7 benötigte Felder
+      - Cursor-Pagination für alle Ergebnisse
+      - 70-80% weniger Datentransfer
+
+   b) PubMed (src/databases/pubmed.py)
+      - efetch mit XML-Parsing
+      - Abstract-Extraktion (vorher immer "N/A")
+      - Pagination: 10.000 IDs pro Batch
+      - Alle Ergebnisse abrufbar (nicht mehr auf 500 limitiert)
+
+   c) EuropePMC (src/databases/europepmc.py)
+      - resultType=core für vollständige Metadaten
+      - Cursor-Pagination
+      - limit=None korrekt behandelt
+
+4. BASE ADAPTER (src/databases/base_adapter.py)
+   - _standardize_article(): Einheitliches Format
+   - Felder: authors, title, year, doi, url, abstract
+   - venue wird NICHT mehr exportiert
+
+5. MERGER (src/utils/merger.py)
+   - Nur für OpenAlex AND-Queries
+   - 3-stufiger Prozess:
+     [1] Match-Finding: title + authors Vergleich
+     [2] Content-Validation: Begriffe aus beiden Gruppen prüfen
+     [3] Deduplizierung: (authors, title) Key
+
+6. EXPORTER (src/utils/exporter.py)
+   - CSV-Export mit standardisierten Spalten
+   - JSON-Export mit Metadata
+   - UTF-8 encoding
+
+================================================================================
+                           DATEISTRUKTUR
+================================================================================
+
+med_db_research_tool/
+├── queries/              ← Eingabe-Queries
+│   ├── pubmed.txt
+│   ├── europepmc.txt
+│   └── openalex.txt
+│
+├── output/               ← Ergebnis-Dateien
+│   ├── pubmed/
+│   ├── europepmc/
+│   └── openalex/
+│
+├── logs/                 ← Log-Dateien
+│
+├── src/
+│   ├── main.py          ← Einstiegspunkt
+│   │
+│   ├── core/            ← Query-Verarbeitung
+│   │   ├── query_handler.py
+│   │   └── query_splitter.py
+│   │
+│   ├── databases/       ← API-Adapter
+│   │   ├── base_adapter.py
+│   │   ├── openalex.py
+│   │   ├── pubmed.py
+│   │   └── europepmc.py
+│   │
+│   ├── utils/           ← Export & Merge
+│   │   ├── exporter.py
+│   │   ├── merger.py
+│   │   ├── logger.py
+│   │   └── file_handler.py
+│   │
+│   └── config/          ← Konfiguration
+│       └── settings.py
+│
+├── WORKFLOW_SCHEMA.txt  ← Diese Datei
+├── PROJEKT_STRUKTUR.md
+└── README.md
+
+================================================================================
+                         API-OPTIMIERUNGEN
+================================================================================
+
+OPENALE X:
+  ✓ select-Parameter mit nur 7 Feldern
+  ✓ 70-80% weniger Datentransfer
+  ✓ Schnellere API-Responses
+
+PUBMED:
+  ✓ efetch statt esummary
+  ✓ XML-Parsing für vollständige Metadaten
+  ✓ Abstracts werden ENDLICH abgerufen
+  ✓ Pagination implementiert
+  ✓ Alle Ergebnisse abrufbar (nicht mehr Limit 500)
+
+EUROPEPMC:
+  ✓ resultType=core explizit
+  ✓ limit=None korrekt behandelt
+  ✓ Keine Crashes mehr
+
+================================================================================
+                      BEISPIEL-DURCHLAUF
+================================================================================
+
+1. Start: python src/main.py
+2. Eingabe: openalex.txt
+3. Query erkannt: AND-Logik (mehrzeilig)
+4. Split: 
+   - Gruppe A: "periodontitis OR periodontal disease..."
+   - Gruppe B: "ubiquinone OR coenzyme q10..."
+   - Zeitraum: "2000-2024"
+5. Suche A: 95,513 Artikel gefunden
+6. Export A: periodontitis_A_timestamp.csv/json
+7. Suche B: 16,268 Artikel gefunden
+8. Export B: ubiquinone_B_timestamp.csv/json
+9. Merge:
+   - Match-Finding: 161 Artikel in beiden Listen
+   - Content-Validation: 61 Artikel validiert
+   - Deduplizierung: 61 → 61 unique (0 Duplikate)
+10. Export Final: openalex_timestamp.csv/json
+11. Fertig!
+
+================================================================================
+                           VERSION INFO
+================================================================================
+
+Erstellt: 2026-01-13
+Tool Version: 1.0.0
+Letzte Änderungen:
+  - 349399b: API-Optimierungen (select, pagination, abstracts)
+  - c0ac18f: Deduplizierung nach Merge-Validation
+
+================================================================================
