@@ -1,1 +1,1 @@
-"diabetes"[MeSH] AND "treatment"[Title/Abstract] AND 2020:2024[pdat]
+diabetes[MeSH] AND treatment[Title/Abstract] AND 2020:2024[pdat]

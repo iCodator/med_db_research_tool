@@ -43,14 +43,13 @@ class BaseAdapter(ABC):
         Standardisiert Artikel-Daten zu einheitlichem Format
         
         Returns:
-            Dictionary mit Feldern: authors, title, year, doi, url, abstract, venue
+            Dictionary mit Feldern: authors, year, venue, doi, url, abstract
         """
         return {
             'authors': article_data.get('authors', 'N/A'),
-            'title': article_data.get('title', 'N/A'),
             'year': article_data.get('year', 'N/A'),
+            'venue': article_data.get('venue', 'N/A'),
             'doi': article_data.get('doi', 'N/A'),
             'url': article_data.get('url', 'N/A'),
-            'abstract': article_data.get('abstract', 'N/A'),
-            'venue': article_data.get('venue', 'N/A')
+            'abstract': article_data.get('abstract', 'N/A')
         }

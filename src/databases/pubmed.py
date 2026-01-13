@@ -69,25 +69,36 @@ class PubMedAdapter(BaseAdapter):
         return data.get('esearchresult', {}).get('idlist', [])
     
     def _fetch_details(self, pmids: List[str]) -> List[Dict[str, Any]]:
-        """Holt Artikel-Details via efetch"""
+        """Holt Artikel-Details via efetch in Batches"""
         if not pmids:
             return []
         
-        url = f"{self.BASE_URL}esummary.fcgi"
-        params = {
-            'db': 'pubmed',
-            'id': ','.join(pmids),
-            'retmode': 'json'
-        }
+        all_articles = []
+        batch_size = 200  # Max 200 IDs pro Request (URL-Längen-Limit)
         
-        if self.api_key:
-            params['api_key'] = self.api_key
+        # IDs in Batches aufteilen
+        for i in range(0, len(pmids), batch_size):
+            batch_pmids = pmids[i:i+batch_size]
+            self.logger.debug(f"Fetching batch {i//batch_size + 1}: {len(batch_pmids)} IDs")
+            
+            url = f"{self.BASE_URL}esummary.fcgi"
+            params = {
+                'db': 'pubmed',
+                'id': ','.join(batch_pmids),
+                'retmode': 'json'
+            }
+            
+            if self.api_key:
+                params['api_key'] = self.api_key
+            
+            response = requests.get(url, params=params, timeout=60)
+            response.raise_for_status()
+            
+            data = response.json()
+            articles = self._parse_response(data)
+            all_articles.extend(articles)
         
-        response = requests.get(url, params=params, timeout=60)
-        response.raise_for_status()
-        
-        data = response.json()
-        return self._parse_response(data)
+        return all_articles
     
     def _parse_response(self, response: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Parsed PubMed API Response"""
