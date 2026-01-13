@@ -28,12 +28,13 @@ class QuerySplitter:
         return False
     
     @staticmethod
-    def split_query(query: str) -> Tuple[str, str]:
+    def split_query(query: str) -> Tuple[str, str, str]:
         """
-        Splittet Query in Gruppe A und Gruppe B
+        Splittet Query in Gruppe A, Gruppe B und optional Zeitraum
         
         Returns:
-            (group_a, group_b) tuple
+            (group_a, group_b, time_range) tuple
+            time_range ist '' wenn nicht vorhanden
         """
         lines = query.strip().split('\n')
         
@@ -47,14 +48,27 @@ class QuerySplitter:
         if and_index is not None:
             # Multi-line format
             group_a = '\n'.join(lines[:and_index]).strip()
-            group_b = '\n'.join(lines[and_index+1:]).strip()
-            return (group_a, group_b)
+            
+            # Check if there's a time range (last line after AND and B)
+            remaining_lines = lines[and_index+1:]
+            
+            # If last line looks like a year range (e.g., "2020-2024")
+            time_range = ''
+            if remaining_lines and remaining_lines[-1].strip() and \
+               '-' in remaining_lines[-1] and \
+               remaining_lines[-1].replace('-', '').replace(' ', '').isdigit():
+                time_range = remaining_lines[-1].strip()
+                group_b = '\n'.join(remaining_lines[:-1]).strip()
+            else:
+                group_b = '\n'.join(remaining_lines).strip()
+            
+            return (group_a, group_b, time_range)
         
         # Simple "A AND B" format
         if ' AND ' in query:
             parts = query.split(' AND ', 1)
             if len(parts) == 2:
-                return (parts[0].strip(), parts[1].strip())
+                return (parts[0].strip(), parts[1].strip(), '')
         
         raise ValueError("Query does not contain valid AND logic")
     

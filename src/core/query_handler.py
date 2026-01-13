@@ -105,19 +105,28 @@ class QueryHandler:
         Returns:
             True bei Erfolg, False bei Fehler
         """
-        # Split query in Gruppe A und B
+        # Split query in Gruppe A, B und Zeitraum
         try:
-            group_a, group_b = QuerySplitter.split_query(query)
+            group_a, group_b, time_range = QuerySplitter.split_query(query)
             terms_a = QuerySplitter.extract_terms_for_validation(group_a)
             terms_b = QuerySplitter.extract_terms_for_validation(group_b)
             
             term_a_name = QuerySplitter.extract_first_term(group_a)
             term_b_name = QuerySplitter.extract_first_term(group_b)
             
-            self.logger.info(f"Gruppe A: {term_a_name} ({len(terms_a)} Begriffe)")
-            self.logger.info(f"Gruppe B: {term_b_name} ({len(terms_b)} Begriffe)")
-            print(f"├─ Gruppe A: {term_a_name}")
-            print(f"└─ Gruppe B: {term_b_name}")
+            # Add time range to queries if present (for OpenAlex)
+            if time_range and db_name == 'openalex':
+                group_a = f"{group_a},publication_year:{time_range}"
+                group_b = f"{group_b},publication_year:{time_range}"
+                self.logger.info(f"Zeitraum: {time_range}")
+                print(f"├─ Gruppe A: {term_a_name}")
+                print(f"├─ Gruppe B: {term_b_name}")
+                print(f"└─ Zeitraum: {time_range}")
+            else:
+                self.logger.info(f"Gruppe A: {term_a_name} ({len(terms_a)} Begriffe)")
+                self.logger.info(f"Gruppe B: {term_b_name} ({len(terms_b)} Begriffe)")
+                print(f"├─ Gruppe A: {term_a_name}")
+                print(f"└─ Gruppe B: {term_b_name}")
             
         except ValueError as e:
             self.logger.error(f"Query-Split fehlgeschlagen: {e}")
