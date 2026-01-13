@@ -80,12 +80,12 @@ class ResultMerger:
         matched = []
         
         for article_a in results_a:
-            title_a = article_a.get('title', '').lower().strip()
-            authors_a = article_a.get('authors', '').lower().strip()
+            title_a = (article_a.get('title') or '').lower().strip()
+            authors_a = (article_a.get('authors') or '').lower().strip()
             
             for article_b in results_b:
-                title_b = article_b.get('title', '').lower().strip()
-                authors_b = article_b.get('authors', '').lower().strip()
+                title_b = (article_b.get('title') or '').lower().strip()
+                authors_b = (article_b.get('authors') or '').lower().strip()
                 
                 # Match by title AND authors
                 if title_a == title_b and authors_a == authors_b:
@@ -139,15 +139,15 @@ class ResultMerger:
         
         # Export CSV
         with open(csv_file, 'w', newline='', encoding='utf-8') as f:
-            fieldnames = ['authors', 'year', 'venue', 'doi', 'url', 'abstract']
+            fieldnames = ['authors', 'title', 'year', 'doi', 'url', 'abstract']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             
             for article in articles:
                 writer.writerow({
                     'authors': article.get('authors', 'N/A'),
+                    'title': article.get('title', 'N/A'),
                     'year': article.get('year', 'N/A'),
-                    'venue': article.get('venue', 'N/A'),
                     'doi': article.get('doi', 'N/A'),
                     'url': article.get('url', 'N/A'),
                     'abstract': article.get('abstract', 'N/A')

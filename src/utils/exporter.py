@@ -34,16 +34,15 @@ class Exporter:
             
             # CSV schreiben
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
-                fieldnames = ['title', 'authors', 'year', 'venue', 'doi', 'url', 'abstract']
+                fieldnames = ['authors', 'title', 'year', 'doi', 'url', 'abstract']
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 
                 writer.writeheader()
                 for article in results:
                     writer.writerow({
-                        'title': article.get('title', 'N/A'),
                         'authors': article.get('authors', 'N/A'),
+                        'title': article.get('title', 'N/A'),
                         'year': article.get('year', 'N/A'),
-                        'venue': article.get('venue', 'N/A'),
                         'doi': article.get('doi', 'N/A'),
                         'url': article.get('url', 'N/A'),
                         'abstract': article.get('abstract', 'N/A')

@@ -55,10 +55,10 @@ class QueryHandler:
         self.logger.info(f"Query gelesen: {query[:100]}...")
         print(f"Query: {query[:80]}{'...' if len(query) > 80 else ''}")
         
-        # 3. Check for AND-logic
-        if QuerySplitter.has_and_logic(query):
-            self.logger.info("AND-Logik erkannt - verwende zweistufigen Workflow")
-            print("\n⚡ AND-Logik erkannt - zweistufiger Workflow")
+        # 3. Check for AND-logic (only for OpenAlex)
+        if QuerySplitter.has_and_logic(query) and db_name == 'openalex':
+            self.logger.info("AND-Logik erkannt - verwende zweistufigen Workflow (OpenAlex)")
+            print("\n⚡ AND-Logik erkannt - zweistufiger Workflow (OpenAlex)")
             return self._process_and_query(filename, db_name, query)
         
         # 4. Normale Query-Verarbeitung
