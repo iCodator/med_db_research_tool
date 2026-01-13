@@ -2,6 +2,7 @@
 
 import requests
 import logging
+import time
 from typing import List, Dict, Any
 from src.databases.base_adapter import BaseAdapter
 from src.config.settings import Settings
@@ -14,7 +15,18 @@ class PubMedAdapter(BaseAdapter):
     
     def __init__(self, logger: logging.Logger):
         super().__init__(logger)
-        self.api_key = Settings.PUBMED_API_KEY
+        # Use NCBI_API_KEY, fallback to PUBMED_API_KEY for legacy support
+        self.api_key = Settings.NCBI_API_KEY or Settings.PUBMED_API_KEY
+        self.email = Settings.NCBI_EMAIL
+        
+        # Rate limiting: 3 req/sec without key, 10 req/sec with key
+        self.rate_limit_delay = 0.11 if self.api_key else 0.34
+        
+        # User-Agent as per NCBI guidelines
+        self.user_agent = f"MedicalDatabaseResearchTool/1.0 ({self.email})"
+        
+        self.logger.info(f"PubMed Adapter initialized with API key: {'Yes' if self.api_key else 'No'}")
+        self.logger.info(f"Rate limit: {1/self.rate_limit_delay:.1f} requests/second")
     
     def search(self, query: str, limit: int = 500) -> List[Dict[str, Any]]:
         """
@@ -56,42 +68,56 @@ class PubMedAdapter(BaseAdapter):
             'db': 'pubmed',
             'term': query,
             'retmax': limit,
-            'retmode': 'json'
+            'retmode': 'json',
+            'tool': 'MedicalDatabaseResearchTool',
+            'email': self.email
         }
         
         if self.api_key:
             params['api_key'] = self.api_key
         
-        response = requests.get(url, params=params, timeout=30)
+        headers = {'User-Agent': self.user_agent}
+        
+        response = requests.get(url, params=params, headers=headers, timeout=30)
         response.raise_for_status()
         
         data = response.json()
         return data.get('esearchresult', {}).get('idlist', [])
     
     def _fetch_details(self, pmids: List[str]) -> List[Dict[str, Any]]:
-        """Holt Artikel-Details via efetch in Batches"""
+        """Holt Artikel-Details via efetch in Batches mit Rate Limiting"""
         if not pmids:
             return []
         
         all_articles = []
         batch_size = 200  # Max 200 IDs pro Request (URL-Längen-Limit)
         
+        headers = {'User-Agent': self.user_agent}
+        
         # IDs in Batches aufteilen
         for i in range(0, len(pmids), batch_size):
             batch_pmids = pmids[i:i+batch_size]
-            self.logger.debug(f"Fetching batch {i//batch_size + 1}: {len(batch_pmids)} IDs")
+            batch_num = i//batch_size + 1
+            self.logger.debug(f"Fetching batch {batch_num}: {len(batch_pmids)} IDs")
+            
+            # Rate limiting: Sleep between requests (except first)
+            if i > 0:
+                time.sleep(self.rate_limit_delay)
+                self.logger.debug(f"Rate limit delay: {self.rate_limit_delay}s")
             
             url = f"{self.BASE_URL}esummary.fcgi"
             params = {
                 'db': 'pubmed',
                 'id': ','.join(batch_pmids),
-                'retmode': 'json'
+                'retmode': 'json',
+                'tool': 'MedicalDatabaseResearchTool',
+                'email': self.email
             }
             
             if self.api_key:
                 params['api_key'] = self.api_key
             
-            response = requests.get(url, params=params, timeout=60)
+            response = requests.get(url, params=params, headers=headers, timeout=60)
             response.raise_for_status()
             
             data = response.json()
