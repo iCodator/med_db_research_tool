@@ -1,4 +1,4 @@
 periodontitis OR "periodontal disease" OR periodontics OR "periodontal treatment" OR "periodontal therapy" OR "periodontal intervention" OR "periodontal repair" OR "root planing" OR "dental scaling"
 AND
 ubiquinone OR "coenzyme q10" OR "ubiquinol 10" OR ubiquinol OR "perio q" OR "CNBC gel"
-2024-2025
+2000-2024
