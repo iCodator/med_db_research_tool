@@ -1,0 +1,85 @@
+%% Medical Database Research Tool - Workflow Flowchart
+%% ISO 5807 compliant symbols
+%% Export as SVG: mmdc -i flowchart.mmd -o flowchart.svg
+%% Or use: https://mermaid.live/
+
+flowchart TD
+    Start([START:<br/>Medical Database<br/>Research Tool])
+    
+    %% Input Phase
+    Start --> Input[/Benutzer gibt<br/>Query-Datei ein/]
+    Input --> ReadFile[Query Handler:<br/>Datei einlesen]
+    
+    %% Database Recognition
+    ReadFile --> DetectDB{Datenbank<br/>erkennen}
+    DetectDB -->|pubmed.txt| DBPubMed[PubMed erkannt]
+    DetectDB -->|europepmc.txt| DBEurope[EuropePMC erkannt]
+    DetectDB -->|openalex.txt| DBOpenAlex[OpenAlex erkannt]
+    
+    %% Merge to common path
+    DBPubMed --> CheckAND{AND-Logik<br/>erkannt?}
+    DBEurope --> CheckAND
+    DBOpenAlex --> CheckAND
+    
+    %% Decision: AND Logic
+    CheckAND -->|NEIN| NormalSearch[Normale Suche]
+    CheckAND -->|JA<br/>nur OpenAlex| SplitQuery[Query Splitter:<br/>Split in A & B]
+    
+    %% Normal Search Path
+    NormalSearch --> CallAPI1[API-Aufruf:<br/>Database Adapter]
+    CallAPI1 --> Standardize1[Artikel<br/>standardisieren]
+    Standardize1 --> DirectExport[Zu Export]
+    
+    %% Split & Merge Path
+    SplitQuery --> Extract[Extrahiere:<br/>- Gruppe A Terme<br/>- Gruppe B Terme<br/>- Zeitraum]
+    Extract --> SearchA[Suche Gruppe A]
+    Extract --> SearchB[Suche Gruppe B]
+    
+    %% Parallel searches
+    SearchA --> APICallA[API-Aufruf A:<br/>OpenAlex Adapter]
+    SearchB --> APICallB[API-Aufruf B:<br/>OpenAlex Adapter]
+    
+    APICallA --> StandardizeA[Artikel A<br/>standardisieren]
+    APICallB --> StandardizeB[Artikel B<br/>standardisieren]
+    
+    StandardizeA --> ExportA[/Export A:<br/>CSV + JSON/]
+    StandardizeB --> ExportB[/Export B:<br/>CSV + JSON/]
+    
+    %% Merge Process
+    ExportA --> StartMerge[Merger starten]
+    ExportB --> StartMerge
+    
+    StartMerge --> LoadJSON[Lade JSON-Dateien<br/>A und B]
+    LoadJSON --> MatchFind[Schritt 1:<br/>Match-Finding<br/>title + authors]
+    
+    MatchFind --> Validate[Schritt 2:<br/>Content-Validation<br/>Begriffe A UND B]
+    
+    Validate --> Dedupe[Schritt 3:<br/>Deduplizierung<br/>authors, title key]
+    
+    Dedupe --> CheckResults{Artikel<br/>gefunden?}
+    CheckResults -->|NEIN| NoResults[Keine Treffer<br/>Warnung loggen]
+    CheckResults -->|JA| ToMergeExport[Zu Export]
+    
+    NoResults --> End
+    
+    %% Export Phase
+    DirectExport --> ExportFinal[Exporter:<br/>CSV + JSON]
+    ToMergeExport --> ExportFinal
+    
+    ExportFinal --> WriteCSV[/Schreibe CSV:<br/>authors, title, year,<br/>doi, url, abstract/]
+    WriteCSV --> WriteJSON[/Schreibe JSON:<br/>mit Metadata/]
+    
+    WriteJSON --> LogSuccess[Erfolg loggen:<br/>Dateipfade,<br/>Dateigrößen]
+    
+    LogSuccess --> End([ENDE:<br/>Suche erfolgreich])
+    
+    %% Styling
+    classDef processStyle fill:#e1f5ff,stroke:#333,stroke-width:2px
+    classDef decisionStyle fill:#fff4e1,stroke:#333,stroke-width:2px
+    classDef ioStyle fill:#e8f5e9,stroke:#333,stroke-width:2px
+    classDef terminatorStyle fill:#ffebee,stroke:#333,stroke-width:3px
+    
+    class Start,End terminatorStyle
+    class Input,WriteCSV,WriteJSON,ExportA,ExportB ioStyle
+    class DetectDB,CheckAND,CheckResults decisionStyle
+    class ReadFile,CallAPI1,Standardize1,SplitQuery,Extract,SearchA,SearchB,APICallA,APICallB,StandardizeA,StandardizeB,StartMerge,LoadJSON,MatchFind,Validate,Dedupe,ExportFinal,LogSuccess,NormalSearch,DirectExport,ToMergeExport,NoResults processStyle

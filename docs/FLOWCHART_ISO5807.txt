@@ -1,0 +1,302 @@
+================================================================================
+        MEDICAL DATABASE RESEARCH TOOL - FLOWCHART (ISO 5807)
+================================================================================
+
+Legende:
+  ( START/ENDE )     = Terminator (abgerundetes Rechteck)
+  ┌──────────────┐
+  │   Prozess    │   = Prozessschritt (Rechteck)
+  └──────────────┘
+       / \
+      /   \
+     /Entsch\        = Entscheidung (Raute)
+     \eidung/
+      \   /
+       \ /
+  ┌───────────┐
+  │/ Ein-/Aus-/│     = Eingabe/Ausgabe (Parallelogramm)
+  │\ gabe     \│
+  └───────────┘
+
+================================================================================
+
+
+                      ( START:                )
+                      ( Medical Database      )
+                      ( Research Tool         )
+                               │
+                               ▼
+                      ┌────────────────────┐
+                      │/  Benutzer gibt   /│
+                      │\ Query-Datei ein \│
+                      └──────────┬─────────┘
+                                 │
+                                 ▼
+                      ┌────────────────────┐
+                      │  Query Handler:    │
+                      │  Datei einlesen    │
+                      └──────────┬─────────┘
+                                 │
+                                 ▼
+                            / \ 
+                           /   \
+                          /Daten\
+                          \bank?/
+                           \   /
+                            \ /
+                             │
+           ┌─────────────────┼─────────────────┐
+           │                 │                 │
+           ▼                 ▼                 ▼
+    ┌─────────────┐   ┌─────────────┐  ┌─────────────┐
+    │   PubMed    │   │  EuropePMC  │  │  OpenAlex   │
+    │   erkannt   │   │   erkannt   │  │   erkannt   │
+    └──────┬──────┘   └──────┬──────┘  └──────┬──────┘
+           │                 │                 │
+           └─────────────────┼─────────────────┘
+                             │
+                             ▼
+                        / \
+                       /   \
+                      /AND- \
+                      \Logik?/
+                       \   /
+                        \ /
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+            [NEIN]               [JA]
+              │               (nur OpenAlex)
+              │                     │
+              ▼                     ▼
+    ┌──────────────────┐   ┌─────────────────┐
+    │  Normale Suche   │   │ Query Splitter: │
+    │                  │   │  Split in A & B │
+    └────────┬─────────┘   └────────┬────────┘
+             │                      │
+             │                      ▼
+             │           ┌──────────────────────┐
+             │           │   Extrahiere:        │
+             │           │   - Gruppe A Terme   │
+             │           │   - Gruppe B Terme   │
+             │           │   - Zeitraum         │
+             │           └──────────┬───────────┘
+             │                      │
+             │              ┌───────┴────────┐
+             │              │                │
+             │              ▼                ▼
+             │      ┌──────────────┐  ┌──────────────┐
+             │      │    Suche     │  │    Suche     │
+             │      │   Gruppe A   │  │   Gruppe B   │
+             │      └──────┬───────┘  └──────┬───────┘
+             │             │                 │
+             │             ▼                 ▼
+             │      ┌──────────────┐  ┌──────────────┐
+             │      │ API-Aufruf A:│  │ API-Aufruf B:│
+             │      │   OpenAlex   │  │   OpenAlex   │
+             │      │   Adapter    │  │   Adapter    │
+             │      └──────┬───────┘  └──────┬───────┘
+             │             │                 │
+             │             ▼                 ▼
+             │      ┌──────────────┐  ┌──────────────┐
+             │      │  Artikel A   │  │  Artikel B   │
+             │      │standardisier.│  │standardisier.│
+             │      └──────┬───────┘  └──────┬───────┘
+             │             │                 │
+             │             ▼                 ▼
+             │      ┌─────────────┐   ┌─────────────┐
+             │      │/  Export A: /│   │/  Export B: /│
+             │      │\ CSV + JSON\│   │\ CSV + JSON\│
+             │      └──────┬──────┘   └──────┬──────┘
+             │             │                 │
+             │             └────────┬────────┘
+             │                      │
+             ▼                      ▼
+    ┌──────────────────┐   ┌──────────────────┐
+    │   API-Aufruf:    │   │  Merger starten  │
+    │ Database Adapter │   │                  │
+    └────────┬─────────┘   └────────┬─────────┘
+             │                      │
+             ▼                      ▼
+    ┌──────────────────┐   ┌──────────────────┐
+    │     Artikel      │   │ Lade JSON-Dateien│
+    │ standardisieren  │   │     A und B      │
+    └────────┬─────────┘   └────────┬─────────┘
+             │                      │
+             │                      ▼
+             │             ┌──────────────────┐
+             │             │   Schritt 1:     │
+             │             │  Match-Finding   │
+             │             │ (title + authors)│
+             │             └────────┬─────────┘
+             │                      │
+             │                      ▼
+             │             ┌──────────────────┐
+             │             │   Schritt 2:     │
+             │             │Content-Validation│
+             │             │(Begriffe A UND B)│
+             │             └────────┬─────────┘
+             │                      │
+             │                      ▼
+             │             ┌──────────────────┐
+             │             │   Schritt 3:     │
+             │             │ Deduplizierung   │
+             │             │(authors,title key)│
+             │             └────────┬─────────┘
+             │                      │
+             │                      ▼
+             │                 / \
+             │                /   \
+             │               /Arti-\
+             │               \kel? /
+             │                \   /
+             │                 \ /
+             │                  │
+             │         ┌────────┴────────┐
+             │         │                 │
+             │       [NEIN]            [JA]
+             │         │                 │
+             │         ▼                 │
+             │  ┌──────────────┐        │
+             │  │ Keine Treffer│        │
+             │  │Warnung loggen│        │
+             │  └──────┬───────┘        │
+             │         │                │
+             │         │                │
+             └─────────┼────────────────┘
+                       │
+                       ▼
+              ┌──────────────────┐
+              │    Exporter:     │
+              │   CSV + JSON     │
+              └────────┬─────────┘
+                       │
+                       ▼
+              ┌────────────────────┐
+              │/  Schreibe CSV:   /│
+              │\ authors, title,  \│
+              │\ year, doi, url,  \│
+              │\ abstract         \│
+              └────────┬───────────┘
+                       │
+                       ▼
+              ┌────────────────────┐
+              │/  Schreibe JSON:  /│
+              │\ mit Metadata     \│
+              └────────┬───────────┘
+                       │
+                       ▼
+              ┌──────────────────┐
+              │ Erfolg loggen:   │
+              │  - Dateipfade    │
+              │  - Dateigrößen   │
+              └────────┬─────────┘
+                       │
+                       ▼
+                 ( ENDE:          )
+                 ( Suche          )
+                 ( erfolgreich    )
+
+
+================================================================================
+                           PROZESS-DETAILS
+================================================================================
+
+DATABASE ADAPTER AUSWAHL:
+─────────────────────────
+  • PubMed:      efetch mit XML, Abstract-Extraktion, Pagination
+  • EuropePMC:   resultType=core, Cursor-Pagination
+  • OpenAlex:    select-Parameter (7 Felder), Cursor-Pagination
+
+NORMALE SUCHE (PubMed/EuropePMC):
+──────────────────────────────────
+  1. Query direkt an API senden
+  2. Alle Ergebnisse abrufen (Pagination)
+  3. Artikel standardisieren
+  4. Direkt exportieren (CSV + JSON)
+
+SPLIT & MERGE (NUR OPENALEX):
+──────────────────────────────
+  1. Query in Gruppe A und B splitten
+  2. Parallele Suchen durchführen
+  3. Zwischenergebnisse exportieren (_A und _B Dateien)
+  4. Merge-Prozess:
+     a) Match-Finding (title + authors Vergleich)
+     b) Content-Validation (Begriffe aus beiden Gruppen prüfen)
+     c) Deduplizierung (authors, title Key)
+  5. Finales Ergebnis exportieren
+
+MERGE-PROZESS DETAILS:
+──────────────────────
+  Schritt 1: Match-Finding
+    • Vergleicht title + authors zwischen A und B
+    • Findet Artikel die in BEIDEN Listen vorkommen
+    • Beispiel: 161 Matches von 95,513 + 16,268 Artikeln
+
+  Schritt 2: Content-Validation
+    • Prüft ob Begriffe aus BEIDEN Gruppen im Text sind
+    • Sucht in: title + abstract
+    • Filtert false positives
+    • Beispiel: 161 → 61 validierte Artikel
+
+  Schritt 3: Deduplizierung
+    • Key: (authors, title) normalisiert und lowercase
+    • Entfernt Duplikate
+    • Behält ersten Treffer
+
+EXPORT-FORMAT:
+──────────────
+  CSV-Spalten:  authors, title, year, doi, url, abstract
+  JSON-Format:  {"metadata": {...}, "articles": [...]}
+
+================================================================================
+                      ENTSCHEIDUNGSKRITERIEN
+================================================================================
+
+Datenbank-Erkennung:
+  • Dateiname endet mit "pubmed.txt"    → PubMed
+  • Dateiname endet mit "europepmc.txt" → EuropePMC
+  • Dateiname endet mit "openalex.txt"  → OpenAlex
+
+AND-Logik Erkennung:
+  • Query hat mehrzeilige Struktur mit "AND" Zeile
+  • NUR für OpenAlex implementiert
+  • PubMed/EuropePMC nutzen direkte Query-Strings mit AND-Operator
+
+Artikel gefunden?:
+  • Merge-Ergebnis enthält ≥ 1 Artikel   → Export
+  • Merge-Ergebnis enthält 0 Artikel     → Warnung loggen, Ende
+
+================================================================================
+                           SYMBOLE-ÜBERSICHT
+================================================================================
+
+( Text )             Terminator (START/ENDE)
+┌─────────┐
+│  Text   │          Prozess (Verarbeitung)
+└─────────┘
+┌──────────┐
+│/ Text   /│         Eingabe/Ausgabe
+│\ Text   \│
+└──────────┘
+    / \
+   /   \
+  / Text \           Entscheidung (Ja/Nein, Verzweigung)
+  \ Text /
+   \   /
+    \ /
+     │
+     ▼               Flussrichtung (Pfeil)
+
+[Text]               Annotation/Hinweis
+
+================================================================================
+                             VERSION INFO
+================================================================================
+
+Erstellt: 2026-01-13
+Standard: ISO 5807 (Information processing - Documentation symbols)
+Tool: Medical Database Research Tool v1.0.0
+Commit: 1eb596b (Add workflow schema documentation)
+
+================================================================================
