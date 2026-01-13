@@ -3,6 +3,8 @@
 %% Export as SVG: mmdc -i flowchart.mmd -o flowchart.svg
 %% Or use: https://mermaid.live/
 
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#e1f5ff','primaryTextColor':'#000','primaryBorderColor':'#333','lineColor':'#333','secondaryColor':'#fff4e1','tertiaryColor':'#e8f5e9','background':'transparent','mainBkg':'transparent','secondBkg':'transparent','tertiaryBkg':'transparent'}}}%%
+
 flowchart TD
     Start([START:<br/>Medical Database<br/>Research Tool])
     
@@ -73,11 +75,11 @@ flowchart TD
     
     LogSuccess --> End([ENDE:<br/>Suche erfolgreich])
     
-    %% Styling
-    classDef processStyle fill:#e1f5ff,stroke:#333,stroke-width:2px
-    classDef decisionStyle fill:#fff4e1,stroke:#333,stroke-width:2px
-    classDef ioStyle fill:#e8f5e9,stroke:#333,stroke-width:2px
-    classDef terminatorStyle fill:#ffebee,stroke:#333,stroke-width:3px
+    %% Styling with transparent backgrounds
+    classDef processStyle fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    classDef ioStyle fill:#e8f5e9,stroke:#333,stroke-width:2px,color:#000
+    classDef terminatorStyle fill:#ffebee,stroke:#333,stroke-width:3px,color:#000
     
     class Start,End terminatorStyle
     class Input,WriteCSV,WriteJSON,ExportA,ExportB ioStyle
