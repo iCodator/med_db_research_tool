@@ -36,12 +36,13 @@ class EuropePMCAdapter(BaseAdapter):
             page_size = 100  # Europe PMC empfiehlt max 1000, wir nutzen 100
             cursor_mark = "*"  # Start cursor
             
-            while len(all_articles) < limit:
+            while limit is None or len(all_articles) < limit:
                 # Prepare request
                 params = {
                     'query': query,
                     'format': 'json',
-                    'pageSize': min(page_size, limit - len(all_articles)),
+                    'resultType': 'core',  # Explicitly request 'core' for full metadata including abstract
+                    'pageSize': page_size if limit is None else min(page_size, limit - len(all_articles)),
                     'cursorMark': cursor_mark
                 }
                 

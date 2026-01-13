@@ -68,7 +68,9 @@ class OpenAlexAdapter(BaseAdapter):
                 params = {
                     'filter': query,
                     'per-page': per_page if limit is None else min(per_page, limit - len(all_articles)),
-                    'cursor': cursor
+                    'cursor': cursor,
+                    # Select only needed fields to reduce data transfer
+                    'select': 'id,title,display_name,authorships,publication_year,doi,primary_location,abstract_inverted_index'
                 }
                 
                 # Add mailto for polite pool (faster rate limits)
