@@ -28,8 +28,8 @@ class Exporter:
             return False
         
         try:
-            # Timestamp für Dateiname
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            # Timestamp für Dateiname (ISO-Format für bessere Lesbarkeit)
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             csv_file = output_path / f"{database}_{timestamp}.csv"
             
             # CSV schreiben
@@ -77,8 +77,8 @@ class Exporter:
             return False
         
         try:
-            # Timestamp für Dateiname
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            # Timestamp für Dateiname (ISO-Format für bessere Lesbarkeit)
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             json_file = output_path / f"{database}_{timestamp}.json"
             
             # JSON-Struktur erstellen
