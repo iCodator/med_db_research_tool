@@ -24,11 +24,17 @@ flowchart TD
     DBOpenAlex --> CheckAND
     
     %% Decision: AND Logic
-    CheckAND -->|NEIN| NormalSearch[Normale Suche]
-    CheckAND -->|JA<br/>nur OpenAlex| SplitQuery[Query Splitter:<br/>Split in A & B]
+    CheckAND -->|Keine AND-Logik| NormalSearch[Normale Suche]
+    CheckAND -->|Einzeilig AND<br/>PubMed/EuropePMC| NormalSearchAND[Normale Suche<br/>mit AND-Operator<br/>im Query-String]
+    CheckAND -->|Mehrzeilig AND<br/>nur OpenAlex| SplitQuery[Query Splitter:<br/>Split in A & B]
     
-    %% Normal Search Path
+    %% Normal Search Path (no AND)
     NormalSearch --> CallAPI1[API-Aufruf:<br/>Database Adapter]
+    
+    %% Normal Search with inline AND (PubMed/EuropePMC)
+    NormalSearchAND --> CallAPI2[API-Aufruf:<br/>Database Adapter<br/>Query: A AND B]
+    CallAPI2 --> Standardize2[Artikel<br/>standardisieren]
+    Standardize2 --> DirectExport2[Zu Export]
     CallAPI1 --> Standardize1[Artikel<br/>standardisieren]
     Standardize1 --> DirectExport[Zu Export]
     
@@ -66,6 +72,7 @@ flowchart TD
     
     %% Export Phase
     DirectExport --> ExportFinal[Exporter:<br/>CSV + JSON]
+    DirectExport2 --> ExportFinal
     ToMergeExport --> ExportFinal
     
     ExportFinal --> WriteCSV[/Schreibe CSV:<br/>authors, title, year,<br/>doi, url, abstract/]
@@ -84,4 +91,4 @@ flowchart TD
     class Start,End terminatorStyle
     class Input,WriteCSV,WriteJSON,ExportA,ExportB ioStyle
     class DetectDB,CheckAND,CheckResults decisionStyle
-    class ReadFile,CallAPI1,Standardize1,SplitQuery,Extract,SearchA,SearchB,APICallA,APICallB,StandardizeA,StandardizeB,StartMerge,LoadJSON,MatchFind,Validate,Dedupe,ExportFinal,LogSuccess,NormalSearch,DirectExport,ToMergeExport,NoResults processStyle
+    class ReadFile,CallAPI1,CallAPI2,Standardize1,Standardize2,SplitQuery,Extract,SearchA,SearchB,APICallA,APICallB,StandardizeA,StandardizeB,StartMerge,LoadJSON,MatchFind,Validate,Dedupe,ExportFinal,LogSuccess,NormalSearch,NormalSearchAND,DirectExport,DirectExport2,ToMergeExport,NoResults,DBPubMed,DBEurope,DBOpenAlex processStyle
