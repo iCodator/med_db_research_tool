@@ -1,1 +1,1 @@
-diabetes[MeSH] AND treatment[Title/Abstract] AND 2020:2024[pdat]
+("Periodontal Diseases"[MeSH Terms] OR "Periodontics"[MeSH Terms] OR "periodontal treatment"[Title/Abstract] OR "periodontal therapy"[Title/Abstract] OR "periodontal intervention"[Title/Abstract] OR "periodontal repair"[Title/Abstract] OR "root planing"[Title/Abstract] OR "dental scaling"[Title/Abstract]) AND ("Ubiquinone"[MeSH] OR "coenzyme q10"[Supplementary Concept] OR "ubiquinol 10"[Supplementary Concept] OR "ubiquinol"[Supplementary Concept] OR "perio q"[tiab] OR CNBC~2~gel[tiab])
