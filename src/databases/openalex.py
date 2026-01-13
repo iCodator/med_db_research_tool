@@ -33,17 +33,18 @@ class OpenAlexAdapter(BaseAdapter):
             Liste von Artikel-Dictionaries
         """
         # Auto-convert simple queries to filter format
-        if not query.startswith('default.search:'):
+        # Use title_and_abstract.search for more precise results
+        if not query.startswith('title_and_abstract.search:') and not query.startswith('default.search:'):
             # Check if query has filter format already (e.g., "...,publication_year:...")
             if ',publication_year:' in query or ',publication_date:' in query:
                 # Split off the time filter
                 parts = query.split(',', 1)
                 search_part = parts[0]
                 time_part = parts[1] if len(parts) > 1 else ''
-                query = f"default.search:{search_part},{time_part}"
+                query = f"title_and_abstract.search:{search_part},{time_part}"
             else:
                 # Simple query like "periodontitis OR disease"
-                query = f"default.search:{query}"
+                query = f"title_and_abstract.search:{query}"
             self.logger.debug(f"Auto-converted to filter format: {query[:100]}...")
         
         self.logger.info(f"Starte OpenAlex-Suche mit Query: {query[:100]}...")

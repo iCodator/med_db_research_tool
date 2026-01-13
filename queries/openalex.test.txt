@@ -1,0 +1,4 @@
+periodontitis OR "periodontal disease"
+AND
+ubiquinone OR "coenzyme q10"
+2020-2024
