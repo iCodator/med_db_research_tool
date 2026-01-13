@@ -11,7 +11,7 @@ class Exporter:
     """Klasse für Export-Operationen"""
     
     @staticmethod
-    def export_to_csv(results: List[Dict[str, Any]], output_path: Path, database: str) -> bool:
+    def export_to_csv(results: List[Dict[str, Any]], output_path: Path, database: str) -> Path:
         """
         Exportiert Ergebnisse als CSV-Datei
         
@@ -21,11 +21,11 @@ class Exporter:
             database: Name der Datenbank
             
         Returns:
-            True bei Erfolg, False bei Fehler
+            Path zur CSV-Datei oder None bei Fehler
         """
         if not results:
             print("Keine Ergebnisse zum Exportieren.")
-            return False
+            return None
         
         try:
             # Timestamp für Dateiname (ISO-Format für bessere Lesbarkeit)
@@ -51,15 +51,15 @@ class Exporter:
             file_size = csv_file.stat().st_size / 1024
             print(f"✓ CSV exportiert: {csv_file}")
             print(f"  Größe: {file_size:.1f} KB")
-            return True
+            return csv_file
             
         except Exception as e:
             print(f"Fehler beim CSV-Export: {e}")
-            return False
+            return None
     
     @staticmethod
     def export_to_json(results: List[Dict[str, Any]], output_path: Path, 
-                      database: str, query: str) -> bool:
+                      database: str, query: str) -> Path:
         """
         Exportiert Ergebnisse als JSON-Datei
         
@@ -70,11 +70,11 @@ class Exporter:
             query: Original Query-String
             
         Returns:
-            True bei Erfolg, False bei Fehler
+            Path zur JSON-Datei oder None bei Fehler
         """
         if not results:
             print("Keine Ergebnisse zum Exportieren.")
-            return False
+            return None
         
         try:
             # Timestamp für Dateiname (ISO-Format für bessere Lesbarkeit)
@@ -100,8 +100,8 @@ class Exporter:
             file_size = json_file.stat().st_size / 1024
             print(f"✓ JSON exportiert: {json_file}")
             print(f"  Größe: {file_size:.1f} KB")
-            return True
+            return json_file
             
         except Exception as e:
             print(f"Fehler beim JSON-Export: {e}")
-            return False
+            return None

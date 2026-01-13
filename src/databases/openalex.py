@@ -26,12 +26,18 @@ class OpenAlexAdapter(BaseAdapter):
         Führt OpenAlex-Suche durch
         
         Args:
-            query: OpenAlex Query-String (filter format)
+            query: OpenAlex Query-String (filter format or simple terms)
             limit: Maximale Anzahl Ergebnisse
             
         Returns:
             Liste von Artikel-Dictionaries
         """
+        # Auto-convert simple queries to filter format
+        if not query.startswith('default.search:') and not ',' in query:
+            # Simple query like "periodontitis OR disease" → default.search:periodontitis disease
+            query = f"default.search:{query}"
+            self.logger.debug(f"Auto-converted to filter format: {query[:100]}...")
+        
         self.logger.info(f"Starte OpenAlex-Suche mit Query: {query[:100]}...")
         
         try:
