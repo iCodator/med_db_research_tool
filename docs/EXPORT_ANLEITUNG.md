@@ -75,6 +75,72 @@ mmdc -i docs/flowchart.mmd -o docs/flowchart.pdf
 
 ---
 
+### **Option 4: Kroki.io API** ⭐ AUTOMATISIERUNG
+
+Kroki.io ist ein kostenloser Service zur Diagramm-Konvertierung mit REST API.
+
+#### A) Python-Script (empfohlen):
+```bash
+# Installation (einmalig)
+pip install requests
+
+# Export alle Formate
+python docs/export_kroki.py --format all
+
+# Export einzelne Formate
+python docs/export_kroki.py --format svg
+python docs/export_kroki.py --format png
+python docs/export_kroki.py --format pdf
+
+# Eigene Optionen
+python docs/export_kroki.py --format all --output-dir output --prefix my_diagram
+```
+
+#### B) curl (ohne Dependencies):
+```bash
+# SVG Export
+curl -X POST https://kroki.io/mermaid/svg \
+  -H "Content-Type: text/plain" \
+  --data-binary @docs/flowchart.mmd \
+  -o docs/flowchart_kroki.svg
+
+# PNG Export
+curl -X POST https://kroki.io/mermaid/png \
+  -H "Content-Type: text/plain" \
+  --data-binary @docs/flowchart.mmd \
+  -o docs/flowchart_kroki.png
+
+# PDF Export
+curl -X POST https://kroki.io/mermaid/pdf \
+  -H "Content-Type: text/plain" \
+  --data-binary @docs/flowchart.mmd \
+  -o docs/flowchart_kroki.pdf
+```
+
+#### C) GitHub Actions (automatisch):
+Bei jedem Push von `docs/flowchart.mmd` werden automatisch SVG/PNG/PDF generiert und committed!
+
+**Vorteile:**
+- ✅ Keine lokale Installation nötig
+- ✅ REST API → Automatisierbar
+- ✅ Kostenlos
+- ✅ GitHub Actions Integration
+- ✅ SVG, PNG, PDF Support
+- ✅ Konsistente Ausgabe
+
+**Vergleich der Optionen:**
+
+| Feature | Mermaid Live | Mermaid CLI | Kroki.io API |
+|---------|--------------|-------------|--------------|
+| Installation | Nein | npm (Node.js) | pip (Python) oder curl |
+| Automatisierung | ❌ Manuell | ✅ CLI | ✅ API |
+| Formate | SVG, PNG | SVG, PNG, PDF | SVG, PNG, PDF |
+| GitHub Actions | ❌ | ✅ | ✅ ⭐ |
+| Online/Offline | Online | Offline | Online |
+| Geschwindigkeit | Langsam (manuell) | Schnell | Sehr schnell |
+
+---
+
 ## 🔧 SVG Nachbearbeitung
 
 ### **Inkscape** (kostenlos, Open Source)
@@ -142,7 +208,19 @@ cat docs/flowchart.mmd | xclip -selection clipboard
 # Export SVG klicken
 ```
 
-### 2. Mit CLI (einmalige Installation):
+### 2. Mit Kroki.io API ⭐ NEU & EMPFOHLEN:
+```bash
+# Python-Script (requests library erforderlich)
+pip install requests
+python docs/export_kroki.py --format all
+
+# Oder einzelne Formate
+python docs/export_kroki.py --format svg
+python docs/export_kroki.py --format png
+python docs/export_kroki.py --format pdf
+```
+
+### 3. Mit CLI (einmalige Installation):
 ```bash
 # Installation
 npm install -g @mermaid-js/mermaid-cli

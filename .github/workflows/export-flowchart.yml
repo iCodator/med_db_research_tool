@@ -1,0 +1,59 @@
+name: Export Flowchart via Kroki.io
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/flowchart.mmd'
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  contents: write  # Needed to commit files
+
+jobs:
+  export-diagrams:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper commits
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Export diagrams via Kroki.io
+        run: |
+          python docs/export_kroki.py --format all
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --exit-code docs/flowchart_kroki.* || echo "changed=true" >> $GITHUB_OUTPUT
+      
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/flowchart_kroki.*
+          git commit -m "Auto-export flowchart via Kroki.io [skip ci]"
+          git push
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowchart-exports
+          path: |
+            docs/flowchart_kroki.svg
+            docs/flowchart_kroki.png
+            docs/flowchart_kroki.pdf
+          retention-days: 90
