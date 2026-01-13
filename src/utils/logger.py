@@ -19,8 +19,8 @@ def setup_logger(name: str = "research_tool") -> logging.Logger:
     # Logs-Verzeichnis erstellen
     Settings.LOGS_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Timestamp für Log-Dateiname
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Timestamp für Log-Dateiname (ISO-Format für bessere Lesbarkeit)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_file = Settings.LOGS_DIR / f"research_{timestamp}.log"
     
     # Logger konfigurieren
