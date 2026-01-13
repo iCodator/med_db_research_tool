@@ -82,7 +82,13 @@ class PubMedAdapter(BaseAdapter):
         response.raise_for_status()
         
         data = response.json()
-        return data.get('esearchresult', {}).get('idlist', [])
+        esearch_result = data.get('esearchresult', {})
+        
+        # Log total hit count from database (independent of limit)
+        total_count = esearch_result.get('count', '0')
+        self.logger.info(f"PubMed Datenbank: {total_count} Treffer insgesamt (Limit: {limit})")
+        
+        return esearch_result.get('idlist', [])
     
     def _fetch_details(self, pmids: List[str]) -> List[Dict[str, Any]]:
         """Holt Artikel-Details via efetch in Batches mit Rate Limiting"""

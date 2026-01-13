@@ -53,6 +53,11 @@ class EuropePMCAdapter(BaseAdapter):
                 
                 data = response.json()
                 
+                # Log total hit count on first request (independent of limit)
+                if cursor_mark == "*":
+                    total_hits = data.get('hitCount', 0)
+                    self.logger.info(f"Europe PMC Datenbank: {total_hits} Treffer insgesamt (Limit: {limit})")
+                
                 # Parse results
                 articles = self._parse_response(data)
                 
