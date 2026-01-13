@@ -25,13 +25,13 @@ flowchart TD
     
     %% Decision: AND Logic
     CheckAND -->|Keine AND-Logik| NormalSearch[Normale Suche]
-    CheckAND -->|Einzeilig AND<br/>PubMed/EuropePMC| NormalSearchAND[Normale Suche<br/>mit AND-Operator<br/>im Query-String]
+    CheckAND -->|Einzeilig AND<br/>alle Datenbanken| NormalSearchAND[Normale Suche<br/>mit AND-Operator<br/>im Query-String]
     CheckAND -->|Mehrzeilig AND<br/>nur OpenAlex| SplitQuery[Query Splitter:<br/>Split in A & B]
     
     %% Normal Search Path (no AND)
     NormalSearch --> CallAPI1[API-Aufruf:<br/>Database Adapter]
     
-    %% Normal Search with inline AND (PubMed/EuropePMC)
+    %% Normal Search with inline AND (all databases)
     NormalSearchAND --> CallAPI2[API-Aufruf:<br/>Database Adapter<br/>Query: A AND B]
     CallAPI2 --> Standardize2[Artikel<br/>standardisieren]
     Standardize2 --> DirectExport2[Zu Export]
