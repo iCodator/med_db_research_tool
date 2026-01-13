@@ -21,13 +21,13 @@ class OpenAlexAdapter(BaseAdapter):
         self.logger.info(f"OpenAlex Adapter initialized with email: {'Yes' if self.email else 'No (slower rate)'}")
         self.logger.info(f"Rate limit: {1/self.rate_limit_delay:.1f} requests/second")
     
-    def search(self, query: str, limit: int = 500) -> List[Dict[str, Any]]:
+    def search(self, query: str, limit: int = None) -> List[Dict[str, Any]]:
         """
-        Führt OpenAlex-Suche durch
+        Führt OpenAlex-Suche durch mit Cursor Paging
         
         Args:
             query: OpenAlex Query-String (filter format or simple terms)
-            limit: Maximale Anzahl Ergebnisse
+            limit: Maximale Anzahl Ergebnisse (None = alle)
             
         Returns:
             Liste von Artikel-Dictionaries
@@ -48,25 +48,35 @@ class OpenAlexAdapter(BaseAdapter):
             self.logger.debug(f"Auto-converted to filter format: {query[:100]}...")
         
         self.logger.info(f"Starte OpenAlex-Suche mit Query: {query[:100]}...")
+        if limit is None:
+            self.logger.info("Limit: Alle verfügbaren Ergebnisse")
+        else:
+            self.logger.info(f"Limit: {limit}")
         
         try:
             all_articles = []
             per_page = 200  # OpenAlex max per page
-            page = 1
+            cursor = '*'  # Start with * for cursor paging
+            request_count = 0
             
-            while len(all_articles) < limit:
-                # Prepare request
+            while True:
+                # Check if we've reached the limit
+                if limit is not None and len(all_articles) >= limit:
+                    break
+                
+                # Prepare request with cursor paging
                 params = {
                     'filter': query,
-                    'per-page': min(per_page, limit - len(all_articles)),
-                    'page': page
+                    'per-page': per_page if limit is None else min(per_page, limit - len(all_articles)),
+                    'cursor': cursor
                 }
                 
                 # Add mailto for polite pool (faster rate limits)
                 if self.email:
                     params['mailto'] = self.email
                 
-                self.logger.debug(f"Fetching page {page}: per-page={params['per-page']}")
+                request_count += 1
+                self.logger.debug(f"Request #{request_count}: cursor={cursor[:20]}..., per-page={params['per-page']}")
                 
                 # Make request
                 response = requests.get(self.BASE_URL, params=params, timeout=30)
@@ -75,9 +85,11 @@ class OpenAlexAdapter(BaseAdapter):
                 data = response.json()
                 
                 # Log total hit count on first request
-                if page == 1:
+                if cursor == '*':
                     total_count = data.get('meta', {}).get('count', 0)
-                    self.logger.info(f"OpenAlex Datenbank: {total_count} Treffer insgesamt (Limit: {limit})")
+                    limit_msg = "alle" if limit is None else str(limit)
+                    self.logger.info(f"OpenAlex Datenbank: {total_count} Treffer insgesamt (Limit: {limit_msg})")
+                    print(f"  → Total verfügbar: {total_count}")
                 
                 # Parse results
                 articles = self._parse_response(data)
@@ -89,22 +101,25 @@ class OpenAlexAdapter(BaseAdapter):
                 all_articles.extend(articles)
                 self.logger.debug(f"Abgerufen: {len(articles)} Artikel, Gesamt: {len(all_articles)}")
                 
-                # Check if we have more pages
-                meta = data.get('meta', {})
-                if page >= meta.get('per_page', 1):
-                    # Check if there are more results
-                    if len(all_articles) >= meta.get('count', 0):
-                        self.logger.info("Alle verfügbaren Ergebnisse abgerufen")
-                        break
+                # Progress update every 1000 articles
+                if len(all_articles) % 1000 == 0:
+                    print(f"  → Fortschritt: {len(all_articles)} Artikel abgerufen...")
                 
-                page += 1
+                # Check for next cursor
+                meta = data.get('meta', {})
+                next_cursor = meta.get('next_cursor')
+                
+                if not next_cursor:
+                    self.logger.info("Alle verfügbaren Ergebnisse abgerufen")
+                    break
+                
+                cursor = next_cursor
                 
                 # Rate limiting
-                if len(all_articles) < limit:
-                    time.sleep(self.rate_limit_delay)
+                time.sleep(self.rate_limit_delay)
             
             self.logger.info(f"{len(all_articles)} Artikel von OpenAlex abgerufen")
-            return all_articles[:limit]  # Ensure we don't exceed limit
+            return all_articles if limit is None else all_articles[:limit]
             
         except Exception as e:
             self.logger.error(f"OpenAlex-Suche fehlgeschlagen: {e}")

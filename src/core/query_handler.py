@@ -69,7 +69,7 @@ class QueryHandler:
             return False
         
         print("\nStarte Suche...")
-        results = adapter.search(query)
+        results = adapter.search(query, limit=None)
         
         if not results:
             self.logger.warning("Keine Ergebnisse gefunden")
@@ -140,9 +140,9 @@ class QueryHandler:
         
         output_base = self.file_handler.ensure_output_directory(db_name)
         
-        # Step 1: Query A
+        # Step 1: Query A (unbegrenzt)
         print(f"\n[1/3] Suche Gruppe A ({term_a_name})...")
-        results_a = adapter.search(group_a)
+        results_a = adapter.search(group_a, limit=None)
         if not results_a:
             self.logger.warning("Keine Ergebnisse für Gruppe A")
             print("❌ Keine Ergebnisse für Gruppe A gefunden")
@@ -152,9 +152,9 @@ class QueryHandler:
         file_a_csv = self.exporter.export_to_csv(results_a, output_base, term_a_name + "_A")
         file_a_json = self.exporter.export_to_json(results_a, output_base, term_a_name + "_A", group_a)
         
-        # Step 2: Query B
+        # Step 2: Query B (unbegrenzt)
         print(f"\n[2/3] Suche Gruppe B ({term_b_name})...")
-        results_b = adapter.search(group_b)
+        results_b = adapter.search(group_b, limit=None)
         if not results_b:
             self.logger.warning("Keine Ergebnisse für Gruppe B")
             print("❌ Keine Ergebnisse für Gruppe B gefunden")
