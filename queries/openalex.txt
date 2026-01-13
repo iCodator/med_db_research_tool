@@ -1,1 +1,1 @@
-machine learning AND healthcare
+default.search:machine learning healthcare,publication_year:2020-2024
