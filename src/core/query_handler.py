@@ -2,9 +2,12 @@
 
 import logging
 from typing import Optional
+from pathlib import Path
 from src.config.settings import Settings
 from src.utils.file_handler import FileHandler
 from src.utils.exporter import Exporter
+from src.core.query_splitter import QuerySplitter
+from src.utils.merger import ResultMerger
 
 
 class QueryHandler:
