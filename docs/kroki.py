@@ -40,13 +40,16 @@ except ImportError:
 # Configuration
 KROKI_API_URL = "https://kroki.io"
 SCRIPT_DIR = Path(__file__).parent
+MERMAID_DIR = SCRIPT_DIR / "mermaid"
 
 FormatType = Literal["svg", "png"]
 
 
 def find_mermaid_files() -> list[Path]:
-    """Find all .mmd files in script directory."""
-    mermaid_files = list(SCRIPT_DIR.glob('*.mmd'))
+    """Find all .mmd files in mermaid subdirectory."""
+    if not MERMAID_DIR.exists():
+        return []
+    mermaid_files = list(MERMAID_DIR.glob('*.mmd'))
     return sorted(mermaid_files)
 
 
