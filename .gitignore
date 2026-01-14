@@ -12,6 +12,14 @@ env/
 output/
 logs/
 
+# Generated diagram files in docs/
+docs/*.svg
+docs/*.png
+docs/svg/*.svg
+docs/svg/*.png
+docs/png/*.svg
+docs/png/*.png
+
 # IDE
 .vscode/
 .idea/
