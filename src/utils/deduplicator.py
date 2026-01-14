@@ -62,7 +62,15 @@ class Deduplicator:
                 continue
             
             # Rekursiv alle JSON-Files finden (auch in Subfoldern)
-            files = list(db_dir.rglob('*.json'))
+            all_json_files = list(db_dir.rglob('*.json'))
+            
+            # Spezielle Behandlung für OpenAlex: Nur finale Dateien (openalex_*.json)
+            # Ignoriere Query-Zwischendateien
+            if db == 'openalex':
+                files = [f for f in all_json_files if f.name.startswith('openalex_')]
+            else:
+                files = all_json_files
+            
             json_files[db] = files
             self.stats['files_found'] += len(files)
             
