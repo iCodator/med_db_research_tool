@@ -1,0 +1,43 @@
+graph TB
+    %% Medical Database Research Tool - Module Dependencies
+    
+    research[research.py<br/>Main Entry Point]
+    
+    %% Direct imports from research.py
+    research --> settings[src.config.settings<br/>Settings]
+    research --> query_handler[src.core.query_handler<br/>QueryHandler]
+    research --> file_handler[src.utils.file_handler<br/>FileHandler]
+    research --> logger[src.utils.logger<br/>setup_logger]
+    
+    %% QueryHandler dependencies
+    query_handler --> settings
+    query_handler --> file_handler
+    query_handler --> exporter[src.utils.exporter<br/>Exporter]
+    query_handler --> query_splitter[src.core.query_splitter<br/>QuerySplitter]
+    query_handler --> merger[src.utils.merger<br/>ResultMerger]
+    
+    %% Database Adapters (dynamically loaded)
+    query_handler -.->|dynamic import| pubmed_adapter[src.databases.pubmed<br/>PubMedAdapter]
+    query_handler -.->|dynamic import| europepmc_adapter[src.databases.europepmc<br/>EuropePMCAdapter]
+    query_handler -.->|dynamic import| openalex_adapter[src.databases.openalex<br/>OpenAlexAdapter]
+    
+    %% Adapter inheritance
+    pubmed_adapter --> base_adapter[src.databases.base_adapter<br/>BaseAdapter]
+    europepmc_adapter --> base_adapter
+    openalex_adapter --> base_adapter
+    
+    %% ResultMerger dependencies
+    merger --> exporter
+    
+    %% Styling
+    classDef mainClass fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    classDef coreClass fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef utilClass fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef dbClass fill:#ffccbc,stroke:#bf360c,stroke-width:2px
+    classDef configClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    
+    class research mainClass
+    class query_handler,query_splitter coreClass
+    class file_handler,logger,exporter,merger utilClass
+    class pubmed_adapter,europepmc_adapter,openalex_adapter,base_adapter dbClass
+    class settings configClass

@@ -1,0 +1,66 @@
+flowchart TD
+    %% Medical Database Research Tool - Workflow
+    
+    Start([START: research.py]) --> Init[Initialisiere Logger]
+    Init --> UserInput[/User Input: Dateiname/]
+    UserInput --> CheckEmpty{Eingabe<br/>leer?}
+    
+    CheckEmpty -->|Ja| End1([ENDE: Fehler])
+    CheckEmpty -->|Nein| Normalize[Normalisiere Dateinamen<br/>füge .txt hinzu wenn nötig]
+    
+    Normalize --> ValidateDB{Datenbank<br/>gültig?}
+    ValidateDB -->|Nein| End2([ENDE: Ungültige DB])
+    ValidateDB -->|Ja| ReadQuery[Lese Query aus Datei]
+    
+    ReadQuery --> CheckQuery{Query<br/>gelesen?}
+    CheckQuery -->|Nein| End3([ENDE: Lesefehler])
+    CheckQuery -->|Ja| CheckAND{Hat AND-Logik<br/>UND OpenAlex?}
+    
+    %% Normal Workflow
+    CheckAND -->|Nein| NormalFlow[Normal Workflow]
+    NormalFlow --> InitAdapter[Initialisiere DB-Adapter]
+    InitAdapter --> Search[Führe Suche durch]
+    Search --> CheckResults{Ergebnisse<br/>gefunden?}
+    CheckResults -->|Nein| End4([ENDE: Keine Treffer])
+    CheckResults -->|Ja| Export[Exportiere Ergebnisse]
+    
+    %% AND Workflow
+    CheckAND -->|Ja| ANDFlow[AND Workflow]
+    ANDFlow --> SplitQuery[Split Query in<br/>Gruppe A & B & Zeitraum]
+    SplitQuery --> InitAdapter2[Initialisiere DB-Adapter]
+    
+    InitAdapter2 --> SearchA[1. Suche Gruppe A]
+    SearchA --> CheckA{Ergebnisse<br/>für A?}
+    CheckA -->|Nein| End5([ENDE: Keine Treffer A])
+    CheckA -->|Ja| ExportA[Exportiere A-Ergebnisse]
+    
+    ExportA --> SearchB[2. Suche Gruppe B]
+    SearchB --> CheckB{Ergebnisse<br/>für B?}
+    CheckB -->|Nein| End6([ENDE: Keine Treffer B])
+    CheckB -->|Ja| ExportB[Exportiere B-Ergebnisse]
+    
+    ExportB --> Merge[3. Merge A AND B<br/>nach Title+Authors]
+    Merge --> Validate[Validiere Content<br/>Terms A AND B vorhanden?]
+    Validate --> Dedup[Deduplizierung]
+    Dedup --> CheckMerged{Merged<br/>Ergebnisse?}
+    CheckMerged -->|Nein| End7([ENDE: Keine AND-Match])
+    CheckMerged -->|Ja| ExportMerged[Exportiere Merged Results]
+    
+    %% Export Details
+    Export --> ExportCSV[Exportiere CSV<br/>output/db/csv/]
+    ExportMerged --> ExportCSV
+    ExportCSV --> ExportJSON[Exportiere JSON<br/>output/db/json/]
+    ExportJSON --> Success([ENDE: Erfolgreich])
+    
+    %% Styling
+    classDef startEnd fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef input fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    classDef export fill:#ffebee,stroke:#c62828,stroke-width:2px
+    
+    class Start,End1,End2,End3,End4,End5,End6,End7,Success startEnd
+    class Init,Normalize,ReadQuery,NormalFlow,ANDFlow,InitAdapter,Search,InitAdapter2,SearchA,SearchB,SplitQuery,Merge,Validate,Dedup process
+    class CheckEmpty,ValidateDB,CheckQuery,CheckAND,CheckResults,CheckA,CheckB,CheckMerged decision
+    class UserInput input
+    class Export,ExportA,ExportB,ExportMerged,ExportCSV,ExportJSON export
