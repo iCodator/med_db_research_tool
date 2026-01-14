@@ -32,21 +32,33 @@ class Exporter:
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             csv_file = output_path / f"{database}_{timestamp}.csv"
             
-            # CSV schreiben
+            # CSV schreiben mit selektivem Quoting (title und abstract immer mit "", rest ohne)
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
-                fieldnames = ['authors', 'title', 'year', 'doi', 'url', 'abstract']
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                # Header schreiben
+                f.write('authors,title,year,doi,url,abstract\n')
                 
-                writer.writeheader()
+                # Daten schreiben mit selektivem Quoting
                 for article in results:
-                    writer.writerow({
-                        'authors': article.get('authors', 'N/A'),
-                        'title': article.get('title', 'N/A'),
-                        'year': article.get('year', 'N/A'),
-                        'doi': article.get('doi', 'N/A'),
-                        'url': article.get('url', 'N/A'),
-                        'abstract': article.get('abstract', 'N/A')
-                    })
+                    authors = article.get('authors', 'N/A')
+                    title = article.get('title', 'N/A')
+                    year = article.get('year', 'N/A')
+                    doi = article.get('doi', 'N/A')
+                    url = article.get('url', 'N/A')
+                    abstract = article.get('abstract', 'N/A')
+                    
+                    # Escape quotes in title and abstract (double them)
+                    title_quoted = '"' + str(title).replace('"', '""') + '"'
+                    abstract_quoted = '"' + str(abstract).replace('"', '""') + '"'
+                    
+                    # Authors mit Quoting wenn nötig (enthält oft Kommas)
+                    if ',' in str(authors) or '"' in str(authors) or '\n' in str(authors):
+                        authors_quoted = '"' + str(authors).replace('"', '""') + '"'
+                    else:
+                        authors_quoted = str(authors)
+                    
+                    # Zeile zusammenbauen
+                    line = f'{authors_quoted},{title_quoted},{year},{doi},{url},{abstract_quoted}\n'
+                    f.write(line)
             
             file_size = csv_file.stat().st_size / 1024
             print(f"✓ CSV exportiert: {csv_file}")

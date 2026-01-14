@@ -48,10 +48,32 @@ class Settings:
     
     @classmethod
     def get_database_name(cls, filename: str) -> str:
-        """Extrahiert Datenbanknamen aus Dateinamen"""
+        """Extrahiert Datenbanknamen aus Dateinamen
+        
+        Args:
+            filename: Dateiname mit oder ohne .txt Extension
+            
+        Returns:
+            Datenbank-Name (ohne .txt)
+        """
+        # .txt automatisch anhängen, wenn nicht vorhanden
         if not filename.endswith('.txt'):
-            return None
+            filename = filename + '.txt'
         return filename[:-4].lower()
+    
+    @classmethod
+    def normalize_filename(cls, filename: str) -> str:
+        """Normalisiert Dateinamen (stellt sicher dass .txt vorhanden ist)
+        
+        Args:
+            filename: Dateiname mit oder ohne .txt Extension
+            
+        Returns:
+            Dateiname mit .txt Extension
+        """
+        if not filename.endswith('.txt'):
+            filename = filename + '.txt'
+        return filename
     
     @classmethod
     def is_valid_database(cls, db_name: str) -> bool:

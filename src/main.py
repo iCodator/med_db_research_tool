@@ -30,9 +30,9 @@ def main():
     print("=" * 70)
     print()
     print("Unterstützte Datenbanken:")
-    print("  • pubmed.txt    → PubMed")
-    print("  • europepmc.txt → Europe PMC")
-    print("  • openalex.txt  → OpenAlex")
+    print("  • pubmed     → PubMed")
+    print("  • europepmc  → Europe PMC")
+    print("  • openalex   → OpenAlex")
     print()
     print("-" * 70)
     print()
@@ -42,7 +42,7 @@ def main():
     
     # Dateinamen vom Benutzer abfragen
     try:
-        filename = input("Geben Sie den Dateinamen ein (z.B. pubmed.txt): ").strip()
+        filename = input("Geben Sie den Dateinamen ein (z.B. pubmed oder pubmed.txt): ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\n\nProgramm beendet.")
         return

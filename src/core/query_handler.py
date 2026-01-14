@@ -30,11 +30,14 @@ class QueryHandler:
         """
         self.logger.info(f"Starte Verarbeitung von: {filename}")
         
-        # 1. Datenbankname aus Filename extrahieren
+        # 1. Dateinamen normalisieren (stellt sicher dass .txt vorhanden ist)
+        normalized_filename = Settings.normalize_filename(filename)
+        
+        # 2. Datenbankname aus Filename extrahieren
         db_name = Settings.get_database_name(filename)
         if not db_name:
             self.logger.error(f"Ungültiger Dateiname: {filename}")
-            print(f"Fehler: Datei muss auf .txt enden")
+            print(f"Fehler: Ungültiger Dateiname")
             return False
         
         if not Settings.is_valid_database(db_name):
@@ -46,8 +49,8 @@ class QueryHandler:
         self.logger.info(f"Datenbank erkannt: {db_name}")
         print(f"\nDatenbank: {Settings.SUPPORTED_DATABASES[db_name]['name']}")
         
-        # 2. Query aus Datei lesen
-        query = self.file_handler.read_query_file(filename)
+        # 3. Query aus Datei lesen (mit normalisiertem Dateinamen)
+        query = self.file_handler.read_query_file(normalized_filename)
         if not query:
             self.logger.error("Query konnte nicht gelesen werden")
             return False
