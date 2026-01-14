@@ -2,9 +2,10 @@
 
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Set
+from typing import List, Dict, Any, Tuple, Set, Optional
 from datetime import datetime
 from collections import defaultdict
+import logging
 
 
 class Deduplicator:
@@ -17,18 +18,29 @@ class Deduplicator:
         'openalex': 3
     }
     
-    def __init__(self, output_base_dir: Path):
+    def __init__(self, output_base_dir: Path, logger: Optional[logging.Logger] = None):
         """
         Args:
             output_base_dir: Basis-Output-Verzeichnis (z.B. 'output/')
+            logger: Optional Logger-Instanz für Logging
         """
         self.output_base_dir = output_base_dir
+        self.logger = logger
         self.stats = {
             'files_found': 0,
             'articles_loaded': 0,
             'duplicates_removed': 0,
             'unique_articles': 0
         }
+        # Pro-Datenbank-Statistiken
+        self.per_database_stats = defaultdict(lambda: {
+            'files_found': 0,
+            'articles_loaded': 0,
+            'duplicates_found': 0,
+            'unique_articles': 0
+        })
+        # Duplikate-Details (für detailliertes Logging)
+        self.duplicates_details = []
     
     def collect_json_files(self, databases: List[str]) -> Dict[str, List[Path]]:
         """
@@ -71,6 +83,9 @@ class Deduplicator:
         all_articles = []
         
         for database, files in json_files.items():
+            db_articles_count = 0
+            self.per_database_stats[database]['files_found'] = len(files)
+            
             for json_file in files:
                 try:
                     with open(json_file, 'r', encoding='utf-8') as f:
@@ -82,10 +97,15 @@ class Deduplicator:
                             article['source_database'] = database
                             all_articles.append(article)
                         
+                        db_articles_count += len(articles)
                         self.stats['articles_loaded'] += len(articles)
                 
                 except Exception as e:
                     print(f"⚠ Fehler beim Laden von {json_file}: {e}")
+            
+            self.per_database_stats[database]['articles_loaded'] = db_articles_count
+            if self.logger:
+                self.logger.info(f"{database}: {db_articles_count} Artikel geladen")
         
         return all_articles
     
@@ -116,6 +136,9 @@ class Deduplicator:
         unique_articles = []
         duplicates_count = 0
         
+        # Zähle Duplikate pro Datenbank
+        db_duplicates = defaultdict(int)
+        
         for key, group_articles in groups.items():
             if len(group_articles) == 1:
                 # Kein Duplikat
@@ -134,10 +157,42 @@ class Deduplicator:
                 )
                 
                 # Behalte den mit höchster Priorität (niedrigste Nummer)
-                unique_articles.append(sorted_articles[0])
+                kept_article = sorted_articles[0]
+                unique_articles.append(kept_article)
+                
+                # Zähle Duplikate pro Datenbank (alle außer der behaltene)
+                for article in sorted_articles[1:]:
+                    db = article.get('source_database', 'unknown')
+                    db_duplicates[db] += 1
+                    
+                    # Speichere Duplikat-Details für detailliertes Logging
+                    authors_orig = article.get('authors', 'N/A')
+                    title_orig = article.get('title', 'N/A')
+                    year_orig = article.get('year', 'N/A')
+                    
+                    # Kürze Titel auf 40 Zeichen
+                    title_short = title_orig[:40] + '...' if len(title_orig) > 40 else title_orig
+                    
+                    self.duplicates_details.append({
+                        'database': db,
+                        'authors': authors_orig,
+                        'title': title_short,
+                        'year': year_orig,
+                        'kept_from': kept_article.get('source_database', 'unknown')
+                    })
+        
+        # Update pro-Datenbank-Statistiken
+        for db in self.per_database_stats.keys():
+            self.per_database_stats[db]['duplicates_found'] = db_duplicates.get(db, 0)
+            # Berechne eindeutige Artikel pro Datenbank
+            unique_from_db = sum(1 for a in unique_articles if a.get('source_database') == db)
+            self.per_database_stats[db]['unique_articles'] = unique_from_db
         
         self.stats['duplicates_removed'] = duplicates_count
         self.stats['unique_articles'] = len(unique_articles)
+        
+        if self.logger:
+            self.logger.info(f"Deduplizierung abgeschlossen: {duplicates_count} Duplikate entfernt")
         
         return unique_articles
     
@@ -238,6 +293,75 @@ class Deduplicator:
         print(f"  Größe: {json_size:.1f} KB")
         
         return (csv_file, json_file)
+    
+    def log_statistics(self, mode: str):
+        """
+        Loggt Deduplizierungs-Statistiken
+        
+        Args:
+            mode: 'simple' oder 'detailed'
+        """
+        if not self.logger:
+            return
+        
+        self.logger.info("")
+        self.logger.info("="*70)
+        self.logger.info("DEDUPLIZIERUNGS-STATISTIKEN")
+        self.logger.info("="*70)
+        self.logger.info("")
+        
+        # Globale Statistiken
+        self.logger.info("GESAMT:")
+        self.logger.info(f"  - Geladene Artikel (total):     {self.stats['articles_loaded']}")
+        self.logger.info(f"  - Gefundene Duplikate:          {self.stats['duplicates_removed']}")
+        self.logger.info(f"  - Eindeutige Artikel:           {self.stats['unique_articles']}")
+        self.logger.info("")
+        
+        # Pro-Datenbank-Statistiken
+        self.logger.info("PRO DATENBANK:")
+        self.logger.info("-" * 70)
+        
+        for db in sorted(self.per_database_stats.keys()):
+            stats = self.per_database_stats[db]
+            self.logger.info("")
+            self.logger.info(f"Datenbank: {db.upper()}")
+            self.logger.info(f"  - Anzahl Quellen (geladen):     {stats['articles_loaded']}")
+            self.logger.info(f"  - Anzahl Duplikate:             {stats['duplicates_found']}")
+            self.logger.info(f"  - Verbleibende eindeutige:      {stats['unique_articles']}")
+        
+        # Detailliertes Logging: Liste aller Duplikate
+        if mode == 'detailed' and self.duplicates_details:
+            self.logger.info("")
+            self.logger.info("="*70)
+            self.logger.info("DETAILLIERTE DUPLIKATE-LISTE")
+            self.logger.info("="*70)
+            self.logger.info("")
+            
+            # Gruppiere Duplikate nach Datenbank
+            db_dups = defaultdict(list)
+            for dup in self.duplicates_details:
+                db_dups[dup['database']].append(dup)
+            
+            for db in sorted(db_dups.keys()):
+                dups = db_dups[db]
+                self.logger.info(f"Datenbank: {db.upper()} ({len(dups)} Duplikate)")
+                self.logger.info("-" * 70)
+                
+                for i, dup in enumerate(dups, 1):
+                    authors = dup['authors']
+                    title = dup['title']
+                    year = dup['year']
+                    kept_from = dup['kept_from']
+                    
+                    self.logger.info(f"  [{i}] Autor(en): {authors}")
+                    self.logger.info(f"      Titel:      {title}")
+                    self.logger.info(f"      Jahr:       {year}")
+                    self.logger.info(f"      (Behalten von: {kept_from})")
+                    
+                    if i < len(dups):
+                        self.logger.info("")
+                
+                self.logger.info("")
     
     def get_stats(self) -> Dict[str, int]:
         """Gibt Statistiken zurück"""
