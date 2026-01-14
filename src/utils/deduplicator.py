@@ -1,6 +1,7 @@
 """Deduplicator - Entfernt Duplikate über mehrere Datenbanken hinweg"""
 
 import json
+import html
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Set, Optional
 from datetime import datetime
@@ -117,9 +118,84 @@ class Deduplicator:
         
         return all_articles
     
+    @staticmethod
+    def normalize_title(title: str) -> str:
+        """
+        Normalisiert Titel für besseren Duplikats-Vergleich
+        
+        Args:
+            title: Artikel-Titel
+            
+        Returns:
+            Normalisierter Titel
+        """
+        if not title:
+            return ''
+        
+        # HTML-Entities dekodieren (&amp; → &, &trade; → ™, etc.)
+        title = html.unescape(title)
+        
+        # Satzzeichen am Ende entfernen
+        title = title.rstrip('.!?;:,')
+        
+        # Mehrfache Leerzeichen normalisieren
+        title = ' '.join(title.split())
+        
+        # Lowercase & trim
+        return title.lower().strip()
+    
+    @staticmethod
+    def normalize_abstract(abstract: str, max_length: int = 200) -> str:
+        """
+        Normalisiert Abstract für Ähnlichkeits-Vergleich
+        
+        Args:
+            abstract: Artikel-Abstract
+            max_length: Maximale Länge für Vergleich
+            
+        Returns:
+            Normalisierter Abstract (gekürzt)
+        """
+        if not abstract or abstract == 'N/A':
+            return ''
+        
+        # HTML-Entities dekodieren
+        abstract = html.unescape(abstract)
+        
+        # Whitespace normalisieren
+        abstract = ' '.join(abstract.split())
+        
+        # Lowercase, trim, kürzen
+        return abstract.lower().strip()[:max_length]
+    
+    @staticmethod
+    def text_similarity(text1: str, text2: str) -> float:
+        """
+        Berechnet Ähnlichkeit zwischen zwei Texten (Jaccard-Ähnlichkeit)
+        
+        Args:
+            text1: Erster Text
+            text2: Zweiter Text
+            
+        Returns:
+            Ähnlichkeits-Score (0.0 - 1.0)
+        """
+        if not text1 or not text2:
+            return 0.0
+        
+        # Wortbasierter Vergleich
+        words1 = set(text1.split())
+        words2 = set(text2.split())
+        
+        intersection = words1 & words2
+        union = words1 | words2
+        
+        return len(intersection) / len(union) if union else 0.0
+    
     def deduplicate(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Entfernt Duplikate basierend auf (authors, title, year)
+        Entfernt Duplikate basierend auf (authors, normalized_title)
+        Mit intelligenter Jahr-Prüfung über DOI/URL/Abstract
         Bei Duplikaten: Behalte Artikel mit höchster Priorität
         
         Args:
@@ -128,23 +204,20 @@ class Deduplicator:
         Returns:
             Liste eindeutiger Artikel
         """
-        # Gruppiere Artikel nach (authors, title, year)
+        # STUFE 1: Gruppiere Artikel nach (authors, normalized_title) - OHNE Jahr
         groups = defaultdict(list)
         
         for article in articles:
             # Normalisiere Schlüssel-Felder
             authors = (article.get('authors') or '').lower().strip()
-            title = (article.get('title') or '').lower().strip()
-            year = (article.get('year') or '').strip()
+            title_norm = self.normalize_title(article.get('title') or '')
             
-            key = (authors, title, year)
+            key = (authors, title_norm)
             groups[key].append(article)
         
-        # Für jede Gruppe: Behalte Artikel mit höchster Priorität
+        # STUFE 2: Für jede Gruppe - intelligente Duplikats-Prüfung
         unique_articles = []
         duplicates_count = 0
-        
-        # Zähle Duplikate pro Datenbank
         db_duplicates = defaultdict(int)
         
         for key, group_articles in groups.items():
@@ -152,48 +225,76 @@ class Deduplicator:
                 # Kein Duplikat
                 unique_articles.append(group_articles[0])
             else:
-                # Duplikat gefunden - wähle nach Priorität
-                duplicates_count += len(group_articles) - 1
+                # Mehrere Artikel mit gleichen Autoren und Titel
+                # Gruppiere nach Jahr
+                year_groups = defaultdict(list)
+                for article in group_articles:
+                    year = (article.get('year') or '').strip()
+                    year_groups[year].append(article)
                 
-                # Sortiere nach Datenbank-Priorität
-                sorted_articles = sorted(
-                    group_articles,
-                    key=lambda a: self.DATABASE_PRIORITY.get(
-                        a.get('source_database', ''), 
-                        999
+                # Prüfe jede Jahr-Gruppe
+                if len(year_groups) == 1:
+                    # Fall A: Alle haben dasselbe Jahr → DUPLIKATE
+                    sorted_articles = sorted(
+                        group_articles,
+                        key=lambda a: self.DATABASE_PRIORITY.get(
+                            a.get('source_database', ''), 999
+                        )
                     )
-                )
+                    kept_article = sorted_articles[0]
+                    unique_articles.append(kept_article)
+                    duplicates_count += len(sorted_articles) - 1
+                    
+                    # Logging für Duplikate
+                    for article in sorted_articles[1:]:
+                        self._log_duplicate(article, kept_article, db_duplicates)
                 
-                # Behalte den mit höchster Priorität (niedrigste Nummer)
-                kept_article = sorted_articles[0]
-                unique_articles.append(kept_article)
-                
-                # Zähle Duplikate pro Datenbank (alle außer der behaltene)
-                for article in sorted_articles[1:]:
-                    db = article.get('source_database', 'unknown')
-                    db_duplicates[db] += 1
+                else:
+                    # Fall B: Unterschiedliche Jahre → intelligente Prüfung
+                    potential_duplicates = []
                     
-                    # Speichere Duplikat-Details für detailliertes Logging
-                    authors_orig = article.get('authors') or 'N/A'
-                    title_orig = article.get('title') or 'N/A'
-                    year_orig = article.get('year') or 'N/A'
+                    # Gruppiere Artikel die potenziell Duplikate sind
+                    processed_indices = set()
                     
-                    # Kürze Titel auf 40 Zeichen (sichere None-Behandlung)
-                    title_str = str(title_orig) if title_orig else 'N/A'
-                    title_short = title_str[:40] + '...' if len(title_str) > 40 else title_str
-                    
-                    self.duplicates_details.append({
-                        'database': db,
-                        'authors': authors_orig,
-                        'title': title_short,
-                        'year': year_orig,
-                        'kept_from': kept_article.get('source_database', 'unknown')
-                    })
+                    for i, article1 in enumerate(group_articles):
+                        if i in processed_indices:
+                            continue
+                        
+                        duplicate_group = [article1]
+                        
+                        for j, article2 in enumerate(group_articles[i+1:], start=i+1):
+                            if j in processed_indices:
+                                continue
+                            
+                            # Prüfe ob Duplikat trotz unterschiedlicher Jahre
+                            if self._are_duplicates_despite_year_difference(article1, article2):
+                                duplicate_group.append(article2)
+                                processed_indices.add(j)
+                        
+                        # Behalte bestes Artikel aus Duplikat-Gruppe
+                        if len(duplicate_group) > 1:
+                            sorted_group = sorted(
+                                duplicate_group,
+                                key=lambda a: self.DATABASE_PRIORITY.get(
+                                    a.get('source_database', ''), 999
+                                )
+                            )
+                            kept_article = sorted_group[0]
+                            unique_articles.append(kept_article)
+                            duplicates_count += len(sorted_group) - 1
+                            
+                            # Logging
+                            for article in sorted_group[1:]:
+                                self._log_duplicate(article, kept_article, db_duplicates,
+                                                   reason="Jahr-Konflikt (DOI/URL/Abstract)")
+                        else:
+                            unique_articles.append(article1)
+                        
+                        processed_indices.add(i)
         
-        # Update pro-Datenbank-Statistiken
+        # Update Statistiken
         for db in self.per_database_stats.keys():
             self.per_database_stats[db]['duplicates_found'] = db_duplicates.get(db, 0)
-            # Berechne eindeutige Artikel pro Datenbank
             unique_from_db = sum(1 for a in unique_articles if a.get('source_database') == db)
             self.per_database_stats[db]['unique_articles'] = unique_from_db
         
@@ -204,6 +305,91 @@ class Deduplicator:
             self.logger.info(f"Deduplizierung abgeschlossen: {duplicates_count} Duplikate entfernt")
         
         return unique_articles
+    
+    def _are_duplicates_despite_year_difference(self, article1: Dict[str, Any], 
+                                                article2: Dict[str, Any]) -> bool:
+        """
+        Prüft ob zwei Artikel Duplikate sind, trotz unterschiedlicher Jahre
+        
+        Prüfungs-Reihenfolge:
+        1. DOI identisch (und beide vorhanden)
+        2. URL identisch (und beide vorhanden)
+        3. Abstract-Ähnlichkeit > 80%
+        
+        Args:
+            article1: Erster Artikel
+            article2: Zweiter Artikel
+            
+        Returns:
+            True wenn Duplikat, False sonst
+        """
+        # Prüfe DOI
+        doi1 = (article1.get('doi') or '').strip()
+        doi2 = (article2.get('doi') or '').strip()
+        
+        if doi1 and doi2 and doi1 != 'N/A' and doi2 != 'N/A':
+            if doi1.lower() == doi2.lower():
+                return True
+            else:
+                # Unterschiedliche DOIs → definitiv keine Duplikate
+                return False
+        
+        # Prüfe URL
+        url1 = (article1.get('url') or '').strip()
+        url2 = (article2.get('url') or '').strip()
+        
+        if url1 and url2 and url1 != 'N/A' and url2 != 'N/A':
+            if url1.lower() == url2.lower():
+                return True
+            else:
+                # Unterschiedliche URLs → definitiv keine Duplikate
+                return False
+        
+        # Prüfe Abstract-Ähnlichkeit (Fallback)
+        abstract1 = self.normalize_abstract(article1.get('abstract') or '')
+        abstract2 = self.normalize_abstract(article2.get('abstract') or '')
+        
+        if abstract1 and abstract2:
+            similarity = self.text_similarity(abstract1, abstract2)
+            return similarity > 0.80
+        
+        # Keine ausreichenden Informationen → als nicht-Duplikat behandeln
+        return False
+    
+    def _log_duplicate(self, article: Dict[str, Any], kept_article: Dict[str, Any],
+                      db_duplicates: Dict[str, int], reason: str = ""):
+        """
+        Loggt ein Duplikat
+        
+        Args:
+            article: Duplikats-Artikel (wird entfernt)
+            kept_article: Behaltener Artikel
+            db_duplicates: Duplikats-Zähler pro Datenbank
+            reason: Zusätzlicher Grund (optional)
+        """
+        db = article.get('source_database', 'unknown')
+        db_duplicates[db] += 1
+        
+        authors_orig = article.get('authors') or 'N/A'
+        title_orig = article.get('title') or 'N/A'
+        year_orig = article.get('year') or 'N/A'
+        
+        # Kürze Titel auf 40 Zeichen
+        title_str = str(title_orig) if title_orig else 'N/A'
+        title_short = title_str[:40] + '...' if len(title_str) > 40 else title_str
+        
+        detail = {
+            'database': db,
+            'authors': authors_orig,
+            'title': title_short,
+            'year': year_orig,
+            'kept_from': kept_article.get('source_database', 'unknown')
+        }
+        
+        if reason:
+            detail['reason'] = reason
+        
+        self.duplicates_details.append(detail)
     
     def export_results(self, 
                       articles: List[Dict[str, Any]], 
