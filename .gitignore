@@ -13,12 +13,13 @@ output/
 logs/
 
 # Generated diagram files in docs/
-docs/*.svg
-docs/*.png
-docs/svg/*.svg
-docs/svg/*.png
-docs/png/*.svg
-docs/png/*.png
+# Ignore contents but keep directories
+docs/mermaid/*
+!docs/mermaid/.gitkeep
+docs/svg/*
+!docs/svg/.gitkeep
+docs/png/*
+!docs/png/.gitkeep
 
 # IDE
 .vscode/
