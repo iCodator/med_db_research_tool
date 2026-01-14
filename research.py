@@ -18,38 +18,45 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config.settings import Settings
 from src.core.query_handler import QueryHandler
-from src.utils.file_handler import FileHandler
 from src.utils.logger import setup_logger
+from src.utils.ui_helpers import (
+    print_banner,
+    print_separator,
+    print_section_header,
+    print_list_items,
+    print_success_banner,
+    print_error_banner,
+    get_user_input
+)
 
 
 def main():
     """Hauptfunktion des Research Tools"""
     
-    print("=" * 70)
-    print("MEDICAL DATABASE RESEARCH TOOL")
-    print("=" * 70)
+    # Header
+    print_banner("MEDICAL DATABASE RESEARCH TOOL")
+    print_section_header("Unterstützte Datenbanken:")
+    
+    databases = [
+        ("pubmed", "PubMed"),
+        ("europepmc", "Europe PMC"),
+        ("openalex", "OpenAlex")
+    ]
+    print_list_items(databases)
+    
     print()
-    print("Unterstützte Datenbanken:")
-    print("  • pubmed     → PubMed")
-    print("  • europepmc  → Europe PMC")
-    print("  • openalex   → OpenAlex")
-    print()
-    print("-" * 70)
+    print_separator()
     print()
     
     # Logger initialisieren
     logger = setup_logger()
     
     # Dateinamen vom Benutzer abfragen
-    try:
-        filename = input("Geben Sie den Dateinamen ein (z.B. pubmed oder pubmed.txt): ").strip()
-    except (KeyboardInterrupt, EOFError):
-        print("\n\nProgramm beendet.")
-        return
+    filename = get_user_input("Geben Sie den Dateinamen ein (z.B. pubmed oder pubmed.txt): ")
     
     if not filename:
         print("Fehler: Kein Dateiname angegeben.")
-        return
+        sys.exit(1)
     
     # Query Handler initialisieren
     handler = QueryHandler(logger)
@@ -58,13 +65,9 @@ def main():
     success = handler.process_query_file(filename)
     
     if success:
-        print("\n" + "=" * 70)
-        print("SUCHE ERFOLGREICH ABGESCHLOSSEN")
-        print("=" * 70)
+        print_success_banner("SUCHE ERFOLGREICH ABGESCHLOSSEN")
     else:
-        print("\n" + "=" * 70)
-        print("SUCHE FEHLGESCHLAGEN")
-        print("=" * 70)
+        print_error_banner("SUCHE FEHLGESCHLAGEN")
         print("Überprüfen Sie die Logs für Details.")
 
 

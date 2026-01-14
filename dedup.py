@@ -18,6 +18,18 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config.settings import Settings
 from src.utils.deduplicator import Deduplicator
+from src.utils.ui_helpers import (
+    print_banner,
+    print_separator,
+    print_section_header,
+    print_success_banner,
+    print_warning,
+    get_user_input
+)
+
+
+# Verfügbare Datenbanken
+AVAILABLE_DATABASES = ['pubmed', 'europepmc', 'openalex']
 
 
 def get_database_selection() -> list:
@@ -27,64 +39,64 @@ def get_database_selection() -> list:
     Returns:
         Liste der ausgewählten Datenbanken
     """
-    print("=" * 70)
-    print("CROSS-DATABASE DEDUPLICATION TOOL")
-    print("=" * 70)
-    print()
-    print("Welche Datenbanken sollen auf Duplikate überprüft werden?")
-    print()
+    print_banner("CROSS-DATABASE DEDUPLICATION TOOL")
+    print_section_header("Welche Datenbanken sollen auf Duplikate überprüft werden?")
+    
     print("  A) 'alle' - Durchsucht alle Datenbanken (pubmed, europepmc, openalex)")
     print("  B) Einzeln eingeben (z.B. pubmed, dann europepmc)")
     print()
     
-    try:
-        choice = input("Ihre Wahl (alle/einzeln): ").strip().lower()
-    except (KeyboardInterrupt, EOFError):
-        print("\n\nProgramm beendet.")
-        sys.exit(0)
+    choice = get_user_input("Ihre Wahl (alle/einzeln): ")
     
-    if choice in ['alle', 'all', 'a']:
-        return ['pubmed', 'europepmc', 'openalex']
+    if choice and choice.lower() in ['alle', 'all', 'a']:
+        return AVAILABLE_DATABASES.copy()
     
     # Einzelne Datenbanken abfragen
+    return _get_individual_databases()
+
+
+def _get_individual_databases() -> list:
+    """
+    Fragt User nach einzelnen Datenbanken
+    
+    Returns:
+        Liste der ausgewählten Datenbanken
+    """
     databases = []
-    available_dbs = ['pubmed', 'europepmc', 'openalex']
     
     print()
-    print("Verfügbare Datenbanken: pubmed, europepmc, openalex")
+    print(f"Verfügbare Datenbanken: {', '.join(AVAILABLE_DATABASES)}")
     print("(Drücken Sie Enter ohne Eingabe zum Beenden)")
     print()
     
     while True:
-        try:
-            if databases:
-                prompt = f"Weitere Datenbank hinzufügen? (bereits: {', '.join(databases)}): "
-            else:
-                prompt = "Erste Datenbank: "
-            
-            db = input(prompt).strip().lower()
-            
-            if not db:
-                # Leere Eingabe = fertig
-                break
-            
-            if db not in available_dbs:
-                print(f"⚠ Ungültige Datenbank: {db}")
-                print(f"   Verfügbare Optionen: {', '.join(available_dbs)}")
-                continue
-            
-            if db in databases:
-                print(f"⚠ {db} wurde bereits hinzugefügt")
-                continue
-            
-            databases.append(db)
-            
-        except (KeyboardInterrupt, EOFError):
-            print("\n\nProgramm beendet.")
-            sys.exit(0)
+        if databases:
+            prompt = f"Weitere Datenbank hinzufügen? (bereits: {', '.join(databases)}): "
+        else:
+            prompt = "Erste Datenbank: "
+        
+        db = get_user_input(prompt, allow_empty=True)
+        
+        if not db:
+            # Leere Eingabe = fertig
+            break
+        
+        db = db.lower()
+        
+        if db not in AVAILABLE_DATABASES:
+            print_warning(f"Ungültige Datenbank: {db}")
+            print(f"   Verfügbare Optionen: {', '.join(AVAILABLE_DATABASES)}")
+            continue
+        
+        if db in databases:
+            print_warning(f"{db} wurde bereits hinzugefügt")
+            continue
+        
+        databases.append(db)
     
     if not databases:
-        print("\n⚠ Keine Datenbank ausgewählt. Programm wird beendet.")
+        print()
+        print_warning("Keine Datenbank ausgewählt. Programm wird beendet.")
         sys.exit(0)
     
     return databases
@@ -97,7 +109,7 @@ def main():
     databases = get_database_selection()
     
     print()
-    print("-" * 70)
+    print_separator()
     print()
     print(f"Durchsuche Datenbanken: {', '.join(databases)}")
     print()
@@ -154,11 +166,7 @@ def main():
     )
     
     # Abschluss
-    print()
-    print("=" * 70)
-    print("DEDUPLIZIERUNG ERFOLGREICH ABGESCHLOSSEN")
-    print("=" * 70)
-    print()
+    print_success_banner("DEDUPLIZIERUNG ERFOLGREICH ABGESCHLOSSEN")
     print(f"Dateien gespeichert in: {output_dir}")
 
 
