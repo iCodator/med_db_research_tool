@@ -12,6 +12,10 @@ env/
 output/
 logs/
 
+# Query files (keep directory structure)
+queries/*
+!queries/.gitkeep
+
 # Generated diagram files in docs/
 # Ignore contents but keep directories
 docs/mermaid/*
