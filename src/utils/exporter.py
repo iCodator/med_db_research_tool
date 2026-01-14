@@ -30,7 +30,11 @@ class Exporter:
         try:
             # Timestamp für Dateiname (ISO-Format für bessere Lesbarkeit)
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            csv_file = output_path / f"{database}_{timestamp}.csv"
+            
+            # CSV-Unterverzeichnis erstellen
+            csv_dir = output_path / "csv"
+            csv_dir.mkdir(parents=True, exist_ok=True)
+            csv_file = csv_dir / f"{database}_{timestamp}.csv"
             
             # CSV schreiben mit selektivem Quoting (title und abstract immer mit "", rest ohne)
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
@@ -91,7 +95,11 @@ class Exporter:
         try:
             # Timestamp für Dateiname (ISO-Format für bessere Lesbarkeit)
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            json_file = output_path / f"{database}_{timestamp}.json"
+            
+            # JSON-Unterverzeichnis erstellen
+            json_dir = output_path / "json"
+            json_dir.mkdir(parents=True, exist_ok=True)
+            json_file = json_dir / f"{database}_{timestamp}.json"
             
             # JSON-Struktur erstellen
             data = {

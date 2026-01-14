@@ -168,9 +168,15 @@ class Deduplicator:
         # Stelle sicher dass Output-Verzeichnis existiert
         output_dir.mkdir(parents=True, exist_ok=True)
         
+        # CSV- und JSON-Unterverzeichnisse erstellen
+        csv_dir = output_dir / "csv"
+        json_dir = output_dir / "json"
+        csv_dir.mkdir(parents=True, exist_ok=True)
+        json_dir.mkdir(parents=True, exist_ok=True)
+        
         # Dateinamen
-        csv_file = output_dir / f"dedup_{db_name}_{timestamp}.csv"
-        json_file = output_dir / f"dedup_{db_name}_{timestamp}.json"
+        csv_file = csv_dir / f"dedup_{db_name}_{timestamp}.csv"
+        json_file = json_dir / f"dedup_{db_name}_{timestamp}.json"
         
         # Export CSV mit selektivem Quoting
         with open(csv_file, 'w', newline='', encoding='utf-8') as f:
