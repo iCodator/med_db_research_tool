@@ -166,12 +166,13 @@ class Deduplicator:
                     db_duplicates[db] += 1
                     
                     # Speichere Duplikat-Details für detailliertes Logging
-                    authors_orig = article.get('authors', 'N/A')
-                    title_orig = article.get('title', 'N/A')
-                    year_orig = article.get('year', 'N/A')
+                    authors_orig = article.get('authors') or 'N/A'
+                    title_orig = article.get('title') or 'N/A'
+                    year_orig = article.get('year') or 'N/A'
                     
-                    # Kürze Titel auf 40 Zeichen
-                    title_short = title_orig[:40] + '...' if len(title_orig) > 40 else title_orig
+                    # Kürze Titel auf 40 Zeichen (sichere None-Behandlung)
+                    title_str = str(title_orig) if title_orig else 'N/A'
+                    title_short = title_str[:40] + '...' if len(title_str) > 40 else title_str
                     
                     self.duplicates_details.append({
                         'database': db,
