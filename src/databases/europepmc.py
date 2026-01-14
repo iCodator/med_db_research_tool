@@ -103,7 +103,7 @@ class EuropePMCAdapter(BaseAdapter):
                 'year': str(result.get('pubYear', 'N/A')),
                 'doi': result.get('doi', 'N/A'),
                 'url': self._build_url(result),
-                'abstract': result.get('abstractText', 'N/A'),
+                'abstract': self._clean_abstract(result.get('abstractText', 'N/A')),
                 'venue': result.get('journalTitle', 'N/A')
             })
             
@@ -127,3 +127,14 @@ class EuropePMCAdapter(BaseAdapter):
         source = result.get('source', 'MED')
         ext_id = result.get('id', 'N/A')
         return f"https://europepmc.org/article/{source}/{ext_id}"
+    
+    @staticmethod
+    def _clean_abstract(abstract: str) -> str:
+        """Entfernt Absatzzeichen und normalisiert Whitespace"""
+        if not abstract or abstract == 'N/A':
+            return abstract
+        # Ersetze alle Arten von Zeilenumbrüchen mit Leerzeichen
+        abstract = abstract.replace('\n', ' ').replace('\r', ' ')
+        # Normalisiere mehrfache Leerzeichen
+        abstract = ' '.join(abstract.split())
+        return abstract

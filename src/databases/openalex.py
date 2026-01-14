@@ -204,6 +204,11 @@ class OpenAlexAdapter(BaseAdapter):
             words.sort(key=lambda x: x[0])
             abstract = ' '.join([word for _, word in words])
             
+            # Entferne Absatzzeichen und normalisiere Whitespace
+            if abstract:
+                abstract = abstract.replace('\n', ' ').replace('\r', ' ')
+                abstract = ' '.join(abstract.split())
+            
             return abstract if abstract else 'N/A'
         except Exception as e:
             self.logger.debug(f"Failed to extract abstract: {e}")

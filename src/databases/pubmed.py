@@ -243,6 +243,11 @@ class PubMedAdapter(BaseAdapter):
                             abstract_parts.append(text)
                     abstract = ' '.join(abstract_parts) if abstract_parts else 'N/A'
                     
+                    # Entferne Absatzzeichen und normalisiere Whitespace
+                    if abstract != 'N/A':
+                        abstract = abstract.replace('\n', ' ').replace('\r', ' ')
+                        abstract = ' '.join(abstract.split())
+                    
                     # Extract journal
                     journal_elem = article_elem.find('.//Journal/Title')
                     venue = journal_elem.text if journal_elem is not None else 'N/A'
